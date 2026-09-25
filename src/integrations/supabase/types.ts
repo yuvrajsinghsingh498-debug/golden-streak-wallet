@@ -14,13 +14,102 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      wallet_transactions: {
+        Row: {
+          amount: number
+          coins: number
+          created_at: string
+          description: string
+          id: string
+          kind: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          coins?: number
+          created_at?: string
+          description: string
+          id?: string
+          kind: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          coins?: number
+          created_at?: string
+          description?: string
+          id?: string
+          kind?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallets: {
+        Row: {
+          balance: number
+          claimed_milestones: number[]
+          coins: number
+          created_at: string
+          current_streak: number
+          last_login_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          claimed_milestones?: number[]
+          coins?: number
+          created_at?: string
+          current_streak?: number
+          last_login_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          claimed_milestones?: number[]
+          coins?: number
+          created_at?: string
+          current_streak?: number
+          last_login_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_wallet_money: {
+        Args: { amount_in: number }
+        Returns: {
+          balance: number
+          coins: number
+        }[]
+      }
+      check_in_wallet: {
+        Args: never
+        Returns: {
+          balance: number
+          claimed_milestones: number[]
+          coins: number
+          current_streak: number
+          last_login_date: string
+          pending_milestone: number
+        }[]
+      }
+      claim_streak_reward: {
+        Args: { milestone_in: number }
+        Returns: {
+          awarded: number
+          coins: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
