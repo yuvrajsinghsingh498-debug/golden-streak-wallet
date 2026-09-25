@@ -86,14 +86,14 @@ export type Database = {
     }
     Functions: {
       add_wallet_money: {
-        Args: { amount_in: number }
+        Args: { amount_in: number; uid_in: string }
         Returns: {
           balance: number
           coins: number
         }[]
       }
       check_in_wallet: {
-        Args: never
+        Args: { uid_in: string }
         Returns: {
           balance: number
           claimed_milestones: number[]
@@ -104,7 +104,7 @@ export type Database = {
         }[]
       }
       claim_streak_reward: {
-        Args: { milestone_in: number }
+        Args: { milestone_in: number; uid_in: string }
         Returns: {
           awarded: number
           coins: number
