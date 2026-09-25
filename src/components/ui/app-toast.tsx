@@ -8,9 +8,12 @@ const noticeEvent = "smart-wallet-notice";
 
 function sendNotice(kind: NoticeKind, message: string, options?: { description?: string }) {
   if (typeof window === "undefined") return;
+  const notice: Notice = options?.description
+    ? { id: Date.now(), kind, message, description: options.description }
+    : { id: Date.now(), kind, message };
   window.dispatchEvent(
     new CustomEvent<Notice>(noticeEvent, {
-      detail: { id: Date.now(), kind, message, description: options?.description },
+      detail: notice,
     }),
   );
 }
