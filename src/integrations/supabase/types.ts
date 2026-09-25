@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_read: boolean
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       wallet_transactions: {
         Row: {
           amount: number
@@ -50,33 +80,66 @@ export type Database = {
       wallets: {
         Row: {
           balance: number
+          bonus_spin_available: boolean
+          bonus_spin_granted: boolean
           claimed_milestones: number[]
           coins: number
           created_at: string
           current_streak: number
+          is_vip: boolean
           last_login_date: string | null
+          last_spin_result: string | null
+          referral_code: string
+          referred_by: string | null
+          spin_date: string | null
+          spins_used: number
+          total_coins_earned: number
+          total_deposited: number
           updated_at: string
           user_id: string
+          vip_since: string | null
         }
         Insert: {
           balance?: number
+          bonus_spin_available?: boolean
+          bonus_spin_granted?: boolean
           claimed_milestones?: number[]
           coins?: number
           created_at?: string
           current_streak?: number
+          is_vip?: boolean
           last_login_date?: string | null
+          last_spin_result?: string | null
+          referral_code?: string
+          referred_by?: string | null
+          spin_date?: string | null
+          spins_used?: number
+          total_coins_earned?: number
+          total_deposited?: number
           updated_at?: string
           user_id: string
+          vip_since?: string | null
         }
         Update: {
           balance?: number
+          bonus_spin_available?: boolean
+          bonus_spin_granted?: boolean
           claimed_milestones?: number[]
           coins?: number
           created_at?: string
           current_streak?: number
+          is_vip?: boolean
           last_login_date?: string | null
+          last_spin_result?: string | null
+          referral_code?: string
+          referred_by?: string | null
+          spin_date?: string | null
+          spins_used?: number
+          total_coins_earned?: number
+          total_deposited?: number
           updated_at?: string
           user_id?: string
+          vip_since?: string | null
         }
         Relationships: []
       }
@@ -90,6 +153,13 @@ export type Database = {
         Returns: {
           balance: number
           coins: number
+        }[]
+      }
+      buy_vip: {
+        Args: { uid_in: string }
+        Returns: {
+          balance: number
+          is_vip: boolean
         }[]
       }
       check_in_wallet: {
@@ -107,6 +177,29 @@ export type Database = {
         Args: { milestone_in: number; uid_in: string }
         Returns: {
           awarded: number
+          coins: number
+        }[]
+      }
+      grant_spin_ad: { Args: { uid_in: string }; Returns: boolean }
+      notify_user: {
+        Args: { body_in: string; title_in: string; uid_in: string }
+        Returns: undefined
+      }
+      redeem_referral: {
+        Args: { code_in: string; uid_in: string }
+        Returns: boolean
+      }
+      spin_wheel: {
+        Args: { uid_in: string }
+        Returns: {
+          coins: number
+          prize: number
+        }[]
+      }
+      watch_video_ad: {
+        Args: { uid_in: string }
+        Returns: {
+          ads_today: number
           coins: number
         }[]
       }
