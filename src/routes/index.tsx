@@ -6,7 +6,7 @@ import {
   Users, ReceiptText, Home, BadgeIndianRupee, History, UserRound, Gift, Coins,
   LogOut, LoaderCircle, Trophy,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/app-toast";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
