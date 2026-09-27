@@ -21,11 +21,10 @@ export const loadWallet = createServerFn({ method: "GET" })
     const supabaseAdmin = await admin();
     const { data: walletRows, error: walletError } = await supabaseAdmin.rpc("check_in_wallet", { uid_in: context.userId });
     if (walletError) throw new Error(walletError.message);
-    const checkIn = walletRows?.[0];
-    if (!checkIn) throw new Error("Wallet could not be loaded");
+    const pendingMilestone = walletRows as number | null;
 
     const [{ data: row, error: rowError }, { data: transactions, error: txError }, { data: notifications, error: nError }] = await Promise.all([
-      context.supabase.from("wallets").select("*").eq("user_id", context.userId).single(),
+      context.supabase.from("profiles").select("*").eq("id", context.userId).single(),
       context.supabase.from("wallet_transactions").select("id, kind, amount, coins, description, created_at").order("created_at", { ascending: false }).limit(100),
       context.supabase.from("notifications").select("id, title, body, is_read, created_at").order("created_at", { ascending: false }).limit(50),
     ]);
@@ -33,7 +32,7 @@ export const loadWallet = createServerFn({ method: "GET" })
     if (txError) throw new Error(txError.message);
     if (nError) throw new Error(nError.message);
 
-    const freeLimit = row.is_vip ? 2 : 1;
+    const freeLimit = 1;
     const freeLeft = Math.max(0, freeLimit - row.spins_used);
     const spin = {
       freeLeft,
@@ -43,7 +42,7 @@ export const loadWallet = createServerFn({ method: "GET" })
     const email = (context.claims as { email?: string }).email ?? "";
 
     return {
-      wallet: { ...row, pending_milestone: checkIn.pending_milestone },
+      wallet: { ...row, balance: row.smart_money, coins: row.smart_coins, current_streak: row.streak, pending_milestone: pendingMilestone },
       spin,
       user: { id: context.userId, email },
       transactions: transactions ?? [],
@@ -55,9 +54,9 @@ export const addMoney = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => amountSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: result, error } = await (await admin()).rpc("add_wallet_money", { uid_in: context.userId, amount_in: data.amount });
+    const { data: result, error } = await (await admin()).rpc("request_deposit", { uid_in: context.userId, amount_in: data.amount, utr_in: "" });
     if (error) throw new Error(error.message);
-    return result?.[0];
+    return result;
   });
 
 export const claimReward = createServerFn({ method: "POST" })
@@ -66,7 +65,7 @@ export const claimReward = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: result, error } = await (await admin()).rpc("claim_streak_reward", { uid_in: context.userId, milestone_in: data.milestone });
     if (error) throw new Error(error.message);
-    return result?.[0];
+    return { awarded: result };
   });
 
 export const buyVip = createServerFn({ method: "POST" })
@@ -82,7 +81,7 @@ export const spinWheel = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { data, error } = await (await admin()).rpc("spin_wheel", { uid_in: context.userId });
     if (error) throw new Error(error.message);
-    return { prize: data?.[0]?.prize ?? 0 };
+    return { prize: data ?? 0 };
   });
 
 export const unlockSpinAd = createServerFn({ method: "POST" })
