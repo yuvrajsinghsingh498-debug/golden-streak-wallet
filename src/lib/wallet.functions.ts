@@ -116,3 +116,55 @@ export const markNotificationsRead = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+async function rpc(name: string, args: Record<string, unknown>) {
+  const client = await admin();
+  const { data, error } = await (client.rpc as unknown as (n: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>)(name, args);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export const loadGoals = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const [g, d, w] = await Promise.all([
+      context.supabase.from("savings_goals").select("*").eq("status", "active").order("created_at"),
+      context.supabase.from("deposit_requests").select("id, amount, status, created_at").order("created_at", { ascending: false }).limit(10),
+      context.supabase.from("withdrawal_requests").select("id, amount, upi_id, status, created_at").order("created_at", { ascending: false }).limit(10),
+    ]);
+    return { goals: g.data ?? [], deposits: d.data ?? [], withdrawals: w.data ?? [] };
+  });
+
+export const requestDeposit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ amount: z.number().min(10).max(100000), utr: z.string().regex(/^\d{12}$/) }).parse(i))
+  .handler(async ({ data, context }) => { await rpc("request_deposit", { uid_in: context.userId, amount_in: data.amount, utr_in: data.utr }); return { ok: true }; });
+
+export const requestWithdrawal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ amount: z.number().min(10).max(100000), upi: z.string().trim().regex(/^[A-Za-z0-9._-]{2,}@[A-Za-z]{2,}$/) }).parse(i))
+  .handler(async ({ data, context }) => { await rpc("request_withdrawal", { uid_in: context.userId, amount_in: data.amount, upi_in: data.upi }); return { ok: true }; });
+
+export const convertCoins = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => ({ money: Number(await rpc("convert_coins", { uid_in: context.userId })) }));
+
+export const createGoal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ title: z.string().trim().min(1).max(60), target: z.number().min(1).max(10_000_000) }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { count } = await context.supabase.from("savings_goals").select("id", { count: "exact", head: true }).eq("status", "active");
+    if ((count ?? 0) >= 5) throw new Error("You can have up to 5 active goals");
+    await rpc("create_goal", { uid_in: context.userId, title_in: data.title, target_in: data.target }); return { ok: true };
+  });
+
+export const fundGoal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ goal: z.string().uuid(), amount: z.number().positive().max(10_000_000) }).parse(i))
+  .handler(async ({ data, context }) => { await rpc("fund_goal", { uid_in: context.userId, goal_in: data.goal, amount_in: data.amount }); return { ok: true }; });
+
+export const breakGoal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ goal: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => ({ penalty: Number(await rpc("break_goal", { uid_in: context.userId, goal_in: data.goal })) }));
+

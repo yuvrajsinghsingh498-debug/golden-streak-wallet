@@ -1,0 +1,190 @@
+import { useEffect, useState, type FormEvent } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { QRCodeSVG } from "qrcode.react";
+import { Copy, LoaderCircle, Target, Plus, Share2, Users, Coins, Crown } from "lucide-react";
+
+import { toast } from "@/components/ui/app-toast";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { breakGoal, convertCoins, createGoal, fundGoal, loadGoals, redeemReferral, requestDeposit, requestWithdrawal } from "@/lib/wallet.functions";
+
+const money = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const errMsg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
+const VPA = "smartsaver@upi";
+const dialogCls = "w-[calc(100%-2rem)] rounded-2xl border-border bg-card";
+
+/* ---------- UPI deposit ---------- */
+export function DepositDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; onDone: () => Promise<void> }) {
+  const submit = useServerFn(requestDeposit);
+  const [amount, setAmount] = useState("");
+  const [utr, setUtr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const amt = Number(amount);
+  const validAmt = Number.isFinite(amt) && amt >= 10 && amt <= 100000 && /^\d+(\.\d{1,2})?$/.test(amount);
+  const validUtr = /^\d{12}$/.test(utr);
+  const upiLink = `upi://pay?pa=${VPA}&pn=${encodeURIComponent("Smart Saver")}&am=${validAmt ? amt.toFixed(2) : ""}&cu=INR`;
+
+  const go = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!validAmt) return toast.error("Minimum amount is ₹10");
+    if (!validUtr) return toast.error("UTR must be exactly 12 digits");
+    setBusy(true);
+    try { await submit({ data: { amount: amt, utr } }); toast.success("Payment submitted", { description: "It will be credited after verification." }); setAmount(""); setUtr(""); onOpenChange(false); await onDone(); }
+    catch (err) { toast.error(errMsg(err, "Could not submit payment")); } finally { setBusy(false); }
+  };
+
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className={`${dialogCls} max-h-[90vh] overflow-y-auto`}>
+    <DialogHeader><DialogTitle>Add Coins via UPI</DialogTitle><DialogDescription>Pay with any UPI app, then enter your 12-digit UTR.</DialogDescription></DialogHeader>
+    <form onSubmit={go} className="space-y-4">
+      <div><label className="mb-1.5 block text-sm font-semibold" htmlFor="dep-amt">Amount (min ₹10)</label>
+        <div className="relative"><span className="absolute left-3 top-2.5 font-bold text-primary">₹</span><Input id="dep-amt" inputMode="decimal" placeholder="100" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11 pl-8"/></div></div>
+      <div className="grid place-items-center rounded-xl bg-foreground p-3">
+        {validAmt ? <QRCodeSVG value={upiLink} size={176} /> : <div className="grid size-44 place-items-center text-center text-xs text-background">Enter an amount to show the QR code</div>}
+      </div>
+      <div className="flex items-center justify-between rounded-xl border border-dashed border-primary bg-background/40 p-3">
+        <div><p className="text-[11px] text-muted-foreground">UPI ID</p><p className="font-mono font-bold text-primary">{VPA}</p></div>
+        <Button type="button" size="sm" variant="walletOutline" onClick={async () => { await navigator.clipboard.writeText(VPA); toast.success("UPI ID copied"); }}><Copy/>Copy</Button>
+      </div>
+      <div><label className="mb-1.5 block text-sm font-semibold" htmlFor="utr">UTR / Reference number</label>
+        <Input id="utr" inputMode="numeric" maxLength={12} placeholder="12-digit UTR" value={utr} onChange={(e) => setUtr(e.target.value.replace(/\D/g, ""))} className="h-11 font-mono tracking-widest"/>
+        {utr.length > 0 && !validUtr && <p className="mt-1 text-xs text-destructive">{12 - utr.length} more digit(s) needed</p>}</div>
+      <DialogFooter><Button type="submit" variant="wallet" size="wallet" className="w-full" disabled={busy || !validAmt || !validUtr}>{busy && <LoaderCircle className="animate-spin"/>}Submit for verification</Button></DialogFooter>
+    </form>
+  </DialogContent></Dialog>;
+}
+
+/* ---------- Withdraw ---------- */
+export function WithdrawDialog({ open, onOpenChange, balance, defaultUpi, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; balance: number; defaultUpi: string | null; onDone: () => Promise<void> }) {
+  const submit = useServerFn(requestWithdrawal);
+  const [amount, setAmount] = useState("");
+  const [upi, setUpi] = useState(defaultUpi ?? "");
+  const [busy, setBusy] = useState(false);
+  const amt = Number(amount);
+  const go = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!Number.isFinite(amt) || amt < 10) return toast.error("Minimum withdrawal is ₹10");
+    if (amt > balance) return toast.error("Insufficient Smart Money");
+    if (!/^[A-Za-z0-9._-]{2,}@[A-Za-z]{2,}$/.test(upi.trim())) return toast.error("Enter a valid UPI ID");
+    setBusy(true);
+    try { await submit({ data: { amount: amt, upi: upi.trim() } }); toast.success("Withdrawal requested", { description: "Amount is held until the payout is sent." }); setAmount(""); onOpenChange(false); await onDone(); }
+    catch (err) { toast.error(errMsg(err, "Could not request withdrawal")); } finally { setBusy(false); }
+  };
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className={dialogCls}>
+    <DialogHeader><DialogTitle>Withdraw to UPI</DialogTitle><DialogDescription>Available: ₹{money.format(balance)} · Minimum ₹10</DialogDescription></DialogHeader>
+    <form onSubmit={go} className="space-y-4">
+      <div className="relative"><span className="absolute left-3 top-2.5 font-bold text-primary">₹</span><Input inputMode="decimal" placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11 pl-8"/></div>
+      <Input placeholder="yourname@upi" value={upi} onChange={(e) => setUpi(e.target.value)} maxLength={60} className="h-11"/>
+      <Button type="submit" variant="wallet" size="wallet" className="w-full" disabled={busy || balance < 10}>{busy && <LoaderCircle className="animate-spin"/>}{balance < 10 ? "Need at least ₹10" : "Request Withdrawal"}</Button>
+    </form>
+  </DialogContent></Dialog>;
+}
+
+/* ---------- Redeem coins ---------- */
+export function RedeemDialog({ open, onOpenChange, coins, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; coins: number; onDone: () => Promise<void> }) {
+  const convert = useServerFn(convertCoins);
+  const [busy, setBusy] = useState(false);
+  const usable = Math.floor(coins / 100) * 100;
+  const go = async () => {
+    setBusy(true);
+    try { const r = await convert(); toast.success(`₹${money.format(r.money)} added to Smart Money`); onOpenChange(false); await onDone(); }
+    catch (err) { toast.error(errMsg(err, "Could not redeem")); } finally { setBusy(false); }
+  };
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className={`${dialogCls} text-center`}>
+    <Coins className="mx-auto size-12 text-primary"/>
+    <DialogHeader><DialogTitle className="text-center">Redeem to Smart Money</DialogTitle><DialogDescription className="text-center">100 Smart Coins = ₹1 · Minimum 100 coins</DialogDescription></DialogHeader>
+    <div className="rounded-xl bg-muted/40 p-4 text-sm"><p>You have <b className="text-primary">{coins.toLocaleString("en-IN")}</b> coins</p><p className="mt-1">Redeem <b>{usable.toLocaleString("en-IN")}</b> coins → <b className="text-primary">₹{money.format(usable / 100)}</b></p></div>
+    <Button variant="wallet" size="wallet" onClick={go} disabled={busy || usable < 100}>{busy && <LoaderCircle className="animate-spin"/>}{usable < 100 ? `Need ${100 - coins} more coins` : "Redeem Now"}</Button>
+  </DialogContent></Dialog>;
+}
+
+/* ---------- Savings goals ---------- */
+type GoalData = Awaited<ReturnType<typeof loadGoals>>;
+export function SavingsGoals({ isVip, balance, onChange, version }: { isVip: boolean; balance: number; onChange: () => Promise<void>; version: number }) {
+  const getGoals = useServerFn(loadGoals);
+  const doCreate = useServerFn(createGoal);
+  const doFund = useServerFn(fundGoal);
+  const doBreak = useServerFn(breakGoal);
+  const [data, setData] = useState<GoalData | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [title, setTitle] = useState(""); const [target, setTarget] = useState(""); const [agree, setAgree] = useState(false);
+  const [fundId, setFundId] = useState<string | null>(null); const [fundAmt, setFundAmt] = useState("");
+  const [breakId, setBreakId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const reload = () => getGoals().then(setData).catch(() => undefined);
+  useEffect(() => { reload(); }, [version]);
+  const goals = data?.goals ?? [];
+
+  const act = async (fn: () => Promise<unknown>, ok: string, close: () => void) => {
+    setBusy(true);
+    try { await fn(); toast.success(ok); close(); await Promise.all([reload(), onChange()]); }
+    catch (e) { toast.error(errMsg(e, "Something went wrong")); } finally { setBusy(false); }
+  };
+
+  return <section className="mt-6">
+    <div className="mb-3 flex items-center justify-between">
+      <h2 className="flex items-center gap-2 text-2xl font-extrabold"><Target className="size-7 text-primary"/>My Savings Goals</h2>
+      <span className="text-xs text-muted-foreground">{goals.length}/5</span>
+    </div>
+    <div className="space-y-3">
+      {goals.length === 0 && <div className="rounded-2xl border border-dashed border-primary/50 bg-card/60 p-5 text-center text-sm text-muted-foreground">Start saving for something you love. Fund goals from your Smart Money.</div>}
+      {goals.map((g) => { const pct = Math.min(100, (g.saved_amount / g.target_amount) * 100); return <div key={g.id} className="rounded-2xl border border-border bg-card/80 p-4">
+        <div className="flex items-center justify-between"><p className="font-bold">{g.title}</p><p className="text-sm font-bold text-primary">₹{money.format(g.saved_amount)} <span className="text-muted-foreground">/ ₹{money.format(g.target_amount)}</span></p></div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }}/></div>
+        <div className="mt-3 grid grid-cols-2 gap-2"><Button size="sm" variant="wallet" onClick={() => { setFundId(g.id); setFundAmt(""); }}><Plus/>Add money</Button><Button size="sm" variant="outline" onClick={() => setBreakId(g.id)}>Break goal</Button></div>
+      </div>; })}
+      {goals.length < 5 && <Button variant="walletOutline" size="wallet" className="w-full" onClick={() => { setTitle(""); setTarget(""); setAgree(false); setCreateOpen(true); }}><Plus/>Create a goal</Button>}
+    </div>
+
+    <Dialog open={createOpen} onOpenChange={setCreateOpen}><DialogContent className={dialogCls}>
+      <DialogHeader><DialogTitle>New Savings Goal</DialogTitle><DialogDescription>Up to 5 active goals.</DialogDescription></DialogHeader>
+      <Input placeholder="Goal name (e.g. New phone)" maxLength={60} value={title} onChange={(e) => setTitle(e.target.value)} className="h-11"/>
+      <div className="relative"><span className="absolute left-3 top-2.5 font-bold text-primary">₹</span><Input inputMode="decimal" placeholder="Target amount" value={target} onChange={(e) => setTarget(e.target.value)} className="h-11 pl-8"/></div>
+      <label className="flex items-start gap-2 text-xs text-muted-foreground"><Checkbox checked={agree} onCheckedChange={(v) => setAgree(v === true)} className="mt-0.5"/>
+        <span>I agree that breaking this goal early costs ₹10 Smart Money{isVip ? " (waived for VIP)" : ""}.</span></label>
+      <Button variant="wallet" size="wallet" disabled={busy || !agree || !title.trim() || !(Number(target) > 0)} onClick={() => act(() => doCreate({ data: { title: title.trim(), target: Number(target) } }), "Goal created", () => setCreateOpen(false))}>{busy && <LoaderCircle className="animate-spin"/>}Create Goal</Button>
+    </DialogContent></Dialog>
+
+    <Dialog open={fundId !== null} onOpenChange={(o) => !o && setFundId(null)}><DialogContent className={dialogCls}>
+      <DialogHeader><DialogTitle>Add to goal</DialogTitle><DialogDescription>From Smart Money · ₹{money.format(balance)} available</DialogDescription></DialogHeader>
+      <div className="relative"><span className="absolute left-3 top-2.5 font-bold text-primary">₹</span><Input inputMode="decimal" placeholder="Amount" value={fundAmt} onChange={(e) => setFundAmt(e.target.value)} className="h-11 pl-8"/></div>
+      <Button variant="wallet" size="wallet" disabled={busy || !(Number(fundAmt) > 0)} onClick={() => fundId && act(() => doFund({ data: { goal: fundId, amount: Number(fundAmt) } }), "Money added to goal", () => setFundId(null))}>{busy && <LoaderCircle className="animate-spin"/>}Add</Button>
+    </DialogContent></Dialog>
+
+    <Dialog open={breakId !== null} onOpenChange={(o) => !o && setBreakId(null)}><DialogContent className={dialogCls}>
+      <DialogHeader><DialogTitle>Break this goal?</DialogTitle><DialogDescription>{isVip ? <span className="inline-flex items-center gap-1"><Crown className="size-4 text-primary"/>VIP: no penalty. Saved money returns to Smart Money.</span> : "Saved money returns to Smart Money minus a ₹10 penalty."}</DialogDescription></DialogHeader>
+      <Button variant="destructive" size="wallet" disabled={busy} onClick={() => breakId && act(() => doBreak({ data: { goal: breakId } }), "Goal closed", () => setBreakId(null))}>{busy && <LoaderCircle className="animate-spin"/>}Break Goal</Button>
+    </DialogContent></Dialog>
+  </section>;
+}
+
+/* ---------- Refer & earn ---------- */
+export function ReferSection({ code: myCode, referredBy, onDone }: { code: string; referredBy: string | null; onDone: () => Promise<void> }) {
+  const doRedeem = useServerFn(redeemReferral);
+  const [code, setCode] = useState(""); const [busy, setBusy] = useState(false);
+  const shareText = `Join me on Smart Saver and earn coins daily! Use my referral code ${myCode}: ${typeof window !== "undefined" ? window.location.origin : ""}`;
+  const share = async () => {
+    try { if (navigator.share) await navigator.share({ title: "Smart Saver", text: shareText }); else { await navigator.clipboard.writeText(shareText); toast.success("Invite link copied"); } } catch { /* cancelled */ }
+  };
+  const redeem = async (e: FormEvent) => {
+    e.preventDefault(); setBusy(true);
+    try { await doRedeem({ data: { code } }); setCode(""); await onDone(); toast.success("Referral code applied"); }
+    catch (err) { toast.error(errMsg(err, "Could not apply code")); } finally { setBusy(false); }
+  };
+  return <div className="mt-8 text-left">
+    <h2 className="mb-3 flex items-center gap-2 text-2xl font-extrabold"><Users className="size-6 text-primary"/>Refer & Earn</h2>
+    <div className="earn-refer rounded-2xl border border-wallet-green p-4">
+      <p className="text-sm text-foreground/80">Earn <span className="font-bold text-primary">+1,000 coins</span> when a friend joins with your code.</p>
+      <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-primary bg-background/40 p-3">
+        <span className="font-mono text-2xl font-bold tracking-widest text-primary">{myCode}</span>
+        <button aria-label="Copy code" onClick={async () => { await navigator.clipboard.writeText(myCode); toast.success("Code copied"); }} className="text-primary"><Copy className="size-5"/></button>
+      </div>
+      <Button className="mt-3 w-full" variant="wallet" size="wallet" onClick={share}><Share2/>Share Invite</Button>
+      {!referredBy && <form onSubmit={redeem} className="mt-4 flex gap-2">
+        <Input placeholder="Have a friend's code?" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={20} className="h-11"/>
+        <Button type="submit" variant="walletOutline" className="h-11" disabled={busy || code.trim().length < 4}>{busy ? <LoaderCircle className="animate-spin"/> : "Apply"}</Button>
+      </form>}
+    </div>
+  </div>;
+}
