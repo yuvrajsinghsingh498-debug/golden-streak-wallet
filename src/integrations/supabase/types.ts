@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       deposit_requests: {
         Row: {
           amount: number
@@ -94,6 +115,7 @@ export type Database = {
           gender: string | null
           id: string
           is_vip: boolean
+          last_ad_at: string | null
           last_ad_date: string | null
           last_login_date: string | null
           last_spin_result: string | null
@@ -126,6 +148,7 @@ export type Database = {
           gender?: string | null
           id: string
           is_vip?: boolean
+          last_ad_at?: string | null
           last_ad_date?: string | null
           last_login_date?: string | null
           last_spin_result?: string | null
@@ -158,6 +181,7 @@ export type Database = {
           gender?: string | null
           id?: string
           is_vip?: boolean
+          last_ad_at?: string | null
           last_ad_date?: string | null
           last_login_date?: string | null
           last_spin_result?: string | null
@@ -265,6 +289,7 @@ export type Database = {
           amount: number
           created_at: string
           id: string
+          payout_utr: string | null
           status: string
           updated_at: string
           upi_id: string
@@ -275,6 +300,7 @@ export type Database = {
           amount: number
           created_at?: string
           id?: string
+          payout_utr?: string | null
           status?: string
           updated_at?: string
           upi_id: string
@@ -285,6 +311,7 @@ export type Database = {
           amount?: number
           created_at?: string
           id?: string
+          payout_utr?: string | null
           status?: string
           updated_at?: string
           upi_id?: string
@@ -307,6 +334,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_payout: {
+        Args: { approve_in: boolean; req_in: string; utr_in: string }
+        Returns: undefined
+      }
       admin_review_deposit: {
         Args: { approve_in: boolean; req_in: string }
         Returns: undefined
@@ -322,6 +353,7 @@ export type Database = {
         Args: { milestone_in: number; uid_in: string }
         Returns: number
       }
+      cleanup_old_activity_logs: { Args: never; Returns: number }
       convert_coins: { Args: { uid_in: string }; Returns: number }
       create_goal: {
         Args: { target_in: number; title_in: string; uid_in: string }
