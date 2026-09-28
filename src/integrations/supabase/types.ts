@@ -40,6 +40,7 @@ export type Database = {
           amount: number
           created_at: string
           id: string
+          purpose: string
           status: string
           updated_at: string
           user_email: string | null
@@ -50,6 +51,7 @@ export type Database = {
           amount: number
           created_at?: string
           id?: string
+          purpose?: string
           status?: string
           updated_at?: string
           user_email?: string | null
@@ -60,6 +62,7 @@ export type Database = {
           amount?: number
           created_at?: string
           id?: string
+          purpose?: string
           status?: string
           updated_at?: string
           user_email?: string | null
@@ -381,6 +384,15 @@ export type Database = {
       }
       request_deposit: {
         Args: { amount_in: number; uid_in: string; utr_in: string }
+        Returns: undefined
+      }
+      request_deposit_for: {
+        Args: {
+          amount_in: number
+          purpose_in: string
+          uid_in: string
+          utr_in: string
+        }
         Returns: undefined
       }
       request_withdrawal: {
