@@ -9,13 +9,14 @@ import {
 import { toast } from "@/components/ui/app-toast";
 
 import { Button } from "@/components/ui/button";
+import { DepositDialog, VipDialog, WithdrawDialog } from "@/components/wallet/extras";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  addMoney, buyVip, claimReward, loadWallet, markNotificationsRead, redeemReferral, spinWheel, unlockSpinAd, watchAd,
+  buyVip, claimReward, loadWallet, markNotificationsRead, redeemReferral, spinWheel, unlockSpinAd, watchAd,
 } from "@/lib/wallet.functions";
 
 type WalletData = Awaited<ReturnType<typeof loadWallet>>;
@@ -40,7 +41,6 @@ const errMsg = (e: unknown, fallback: string) => (e instanceof Error ? e.message
 function SmartWalletPage() {
   const router = useRouter();
   const getWallet = useServerFn(loadWallet);
-  const saveMoney = useServerFn(addMoney);
   const saveReward = useServerFn(claimReward);
   const purchaseVip = useServerFn(buyVip);
   const readAll = useServerFn(markNotificationsRead);
@@ -50,6 +50,7 @@ function SmartWalletPage() {
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [addOpen, setAddOpen] = useState(false);
   const [vipOpen, setVipOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [saving, setSaving] = useState(false);
@@ -87,21 +88,6 @@ function SmartWalletPage() {
 
   const wallet = walletData.wallet;
   const unread = walletData.notifications.filter((n) => !n.is_read).length;
-
-  const handleAdd = async (event: FormEvent) => {
-    event.preventDefault();
-    const numericAmount = Number(amount);
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0 || numericAmount > 1_000_000 || !/^\d+(\.\d{1,2})?$/.test(amount)) {
-      toast.error("Enter an amount from ₹1 to ₹10,00,000"); return;
-    }
-    setSaving(true);
-    try {
-      await saveMoney({ data: { amount: numericAmount } });
-      await refresh(); setAddOpen(false); setAmount("");
-      toast.success(`₹${money.format(numericAmount)} added`, { description: `You also earned ${Math.round(numericAmount * 10).toLocaleString("en-IN")} coins.` });
-    } catch (error) { toast.error(errMsg(error, "Could not add money")); }
-    finally { setSaving(false); }
-  };
 
   const handleClaim = async () => {
     if (!rewardMilestone) return;
@@ -151,7 +137,7 @@ function SmartWalletPage() {
             <div className="relative flex items-start gap-4"><div className="grid size-14 place-items-center rounded-2xl bg-foreground/15"><WalletCards className="size-9"/></div><div><h2 className="text-xl font-extrabold">SMART MONEY</h2><p className="text-sm text-foreground/75">Withdrawable Balance</p></div></div>
             <div className="relative mt-5 text-4xl font-extrabold">₹ {money.format(wallet.balance)}</div>
             <div className="relative mt-6 grid grid-cols-2 gap-3">
-              <Button variant="walletOutline" size="wallet" onClick={() => toast.info(wallet.is_vip ? "Priority withdrawals are coming soon" : "Withdrawals are coming soon")}><Landmark/>Withdraw<ChevronRight/></Button>
+              <Button variant="walletOutline" size="wallet" onClick={() => setWithdrawOpen(true)}><Landmark/>Withdraw<ChevronRight/></Button>
               <Button variant="wallet" size="wallet" onClick={() => setAddOpen(true)}><Plus className="rounded-full bg-primary-foreground p-0.5 text-primary"/>Add Money<ChevronRight/></Button>
             </div>
           </section>
@@ -193,19 +179,9 @@ function SmartWalletPage() {
         </SheetContent>
       </Sheet>
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}><DialogContent className="w-[calc(100%-2rem)] rounded-2xl border-border bg-card"><DialogHeader><DialogTitle>Add Money</DialogTitle><DialogDescription>Every ₹1 adds 10 coins to your wallet.</DialogDescription></DialogHeader><form onSubmit={handleAdd}><label className="mb-2 block text-sm font-semibold" htmlFor="amount">Amount</label><div className="relative"><span className="absolute left-3 top-2.5 font-bold text-primary">₹</span><Input id="amount" inputMode="decimal" placeholder="0.00" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-11 pl-8" autoFocus/></div><p className="mt-2 text-xs text-muted-foreground">You’ll receive {Math.round((Number(amount) || 0) * 10).toLocaleString("en-IN")} coins.</p><DialogFooter className="mt-5"><Button type="submit" variant="wallet" size="wallet" disabled={saving} className="w-full">{saving && <LoaderCircle className="animate-spin"/>}Confirm & Add</Button></DialogFooter></form></DialogContent></Dialog>
-
-      <Dialog open={vipOpen} onOpenChange={setVipOpen}>
-        <DialogContent className="w-[calc(100%-2rem)] rounded-2xl border-primary bg-card">
-          <Crown className="mx-auto size-14 fill-current text-primary"/>
-          <DialogHeader><DialogTitle className="text-center">Buy VIP Membership</DialogTitle><DialogDescription className="text-center"><span className="font-display text-3xl font-bold text-primary">₹49</span> <span className="text-xs">/ month</span></DialogDescription></DialogHeader>
-          <ul className="space-y-2 text-sm">
-            {["Exclusive VIP Badge", "Priority Withdrawals", "Bonus Daily Spin"].map((perk) => <li key={perk} className="flex items-center gap-2 rounded-lg bg-muted/40 p-2.5"><Check className="size-4 text-primary"/>{perk}</li>)}
-          </ul>
-          <p className="text-center text-xs text-muted-foreground">Paid from your wallet balance (₹{money.format(wallet.balance)} available).</p>
-          <Button variant="wallet" size="wallet" onClick={handleVip} disabled={saving}>{saving && <LoaderCircle className="animate-spin"/>}Pay ₹49 & Activate VIP</Button>
-        </DialogContent>
-      </Dialog>
+      <DepositDialog open={addOpen} onOpenChange={setAddOpen} onDone={refresh}/>
+      <WithdrawDialog open={withdrawOpen} onOpenChange={setWithdrawOpen} balance={Number(wallet.balance)} defaultUpi={wallet.default_upi} onDone={refresh}/>
+      <VipDialog open={vipOpen} onOpenChange={setVipOpen} balance={Number(wallet.balance)} busy={saving} onPayWallet={handleVip} onDone={refresh}/>
 
       <Dialog open={rewardMilestone !== null} onOpenChange={() => undefined}><DialogContent className="w-[calc(100%-2rem)] rounded-2xl border-primary bg-card text-center"><Trophy className="mx-auto size-14 text-primary"/><DialogHeader><DialogTitle>Streak milestone reached!</DialogTitle><DialogDescription>You completed {rewardMilestone} active days. Claim your {rewardMilestone ? rewards[rewardMilestone].toLocaleString("en-IN") : 0} coin reward.</DialogDescription></DialogHeader><Button variant="wallet" size="wallet" onClick={handleClaim} disabled={saving}>{saving && <LoaderCircle className="animate-spin"/>}Claim Reward</Button></DialogContent></Dialog>
     </main>

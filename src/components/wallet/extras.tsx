@@ -15,43 +15,78 @@ const errMsg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
 const VPA = "smartsaver@upi";
 const dialogCls = "w-[calc(100%-2rem)] rounded-2xl border-border bg-card";
 
-/* ---------- UPI deposit ---------- */
-export function DepositDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; onDone: () => Promise<void> }) {
+/* ---------- UPI pay step (shared) ---------- */
+function UpiPayStep({ amount, purpose, onBack, onSubmitted }: { amount: number; purpose: "deposit" | "vip"; onBack: () => void; onSubmitted: () => Promise<void> }) {
   const submit = useServerFn(requestDeposit);
-  const [amount, setAmount] = useState("");
   const [utr, setUtr] = useState("");
+  const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
-  const amt = Number(amount);
-  const validAmt = Number.isFinite(amt) && amt >= 10 && amt <= 100000 && /^\d+(\.\d{1,2})?$/.test(amount);
   const validUtr = /^\d{12}$/.test(utr);
-  const upiLink = `upi://pay?pa=${VPA}&pn=${encodeURIComponent("Smart Saver")}&am=${validAmt ? amt.toFixed(2) : ""}&cu=INR`;
-
+  const upiLink = `upi://pay?pa=${VPA}&pn=${encodeURIComponent("Smart Saver")}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(purpose === "vip" ? "VIP Pass" : "Smart Money")}`;
   const go = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!validAmt) return toast.error("Minimum amount is ₹10");
-    if (!validUtr) return toast.error("UTR must be exactly 12 digits");
+    e.preventDefault(); setTouched(true);
+    if (!validUtr) return;
     setBusy(true);
-    try { await submit({ data: { amount: amt, utr } }); toast.success("Payment submitted", { description: "It will be credited after verification." }); setAmount(""); setUtr(""); onOpenChange(false); await onDone(); }
+    try { await submit({ data: { amount, utr, purpose } }); toast.success("Payment submitted", { description: "It will be activated after verification." }); setUtr(""); await onSubmitted(); }
     catch (err) { toast.error(errMsg(err, "Could not submit payment")); } finally { setBusy(false); }
   };
+  return <form onSubmit={go} className="space-y-4">
+    <p className="text-center text-sm">Pay <b className="text-primary">₹{money.format(amount)}</b> to the official UPI ID</p>
+    <div className="mx-auto grid w-fit place-items-center rounded-xl bg-foreground p-3"><QRCodeSVG value={upiLink} size={176}/></div>
+    <div className="flex items-center justify-between rounded-xl border border-dashed border-primary bg-background/40 p-3">
+      <div><p className="text-[11px] text-muted-foreground">Official UPI ID</p><p className="font-mono font-bold text-primary">{VPA}</p></div>
+      <Button type="button" size="sm" variant="walletOutline" onClick={async () => { await navigator.clipboard.writeText(VPA); toast.success("UPI ID copied"); }}><Copy/>Copy</Button>
+    </div>
+    <div><label className="mb-1.5 block text-sm font-semibold" htmlFor={`utr-${purpose}`}>12-digit UTR / Reference number</label>
+      <Input id={`utr-${purpose}`} inputMode="numeric" maxLength={12} placeholder="Enter UTR after paying" value={utr} onChange={(e) => setUtr(e.target.value.replace(/\D/g, ""))} className="h-11 font-mono tracking-widest"/>
+      {touched && !validUtr && <p className="mt-1 text-xs text-destructive">UTR must be exactly 12 digits</p>}</div>
+    <div className="grid grid-cols-[auto_1fr] gap-2"><Button type="button" variant="outline" className="h-12" onClick={onBack}>Back</Button>
+      <Button type="submit" variant="wallet" size="wallet" disabled={busy}>{busy && <LoaderCircle className="animate-spin"/>}Submit for verification</Button></div>
+  </form>;
+}
 
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className={`${dialogCls} max-h-[90vh] overflow-y-auto`}>
-    <DialogHeader><DialogTitle>Add Coins via UPI</DialogTitle><DialogDescription>Pay with any UPI app, then enter your 12-digit UTR.</DialogDescription></DialogHeader>
-    <form onSubmit={go} className="space-y-4">
-      <div><label className="mb-1.5 block text-sm font-semibold" htmlFor="dep-amt">Amount (min ₹10)</label>
-        <div className="relative"><span className="absolute left-3 top-2.5 font-bold text-primary">₹</span><Input id="dep-amt" inputMode="decimal" placeholder="100" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11 pl-8"/></div></div>
-      <div className="grid place-items-center rounded-xl bg-foreground p-3">
-        {validAmt ? <QRCodeSVG value={upiLink} size={176} /> : <div className="grid size-44 place-items-center text-center text-xs text-background">Enter an amount to show the QR code</div>}
+/* ---------- UPI deposit ---------- */
+export function DepositDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; onDone: () => Promise<void> }) {
+  const [amount, setAmount] = useState("");
+  const [step, setStep] = useState<1 | 2>(1);
+  const amt = Number(amount);
+  const validAmt = Number.isFinite(amt) && amt >= 10 && amt <= 100000 && /^\d+(\.\d{1,2})?$/.test(amount);
+  const change = (o: boolean) => { if (!o) { setStep(1); } onOpenChange(o); };
+  return <Dialog open={open} onOpenChange={change}><DialogContent className={`${dialogCls} max-h-[90vh] overflow-y-auto`}>
+    <DialogHeader><DialogTitle>Add Smart Money</DialogTitle><DialogDescription>{step === 1 ? "₹1 = ₹1.00 Smart Money. Minimum ₹10." : "Step 2 of 2 · Pay and enter your UTR"}</DialogDescription></DialogHeader>
+    {step === 1 ? <form onSubmit={(e) => { e.preventDefault(); if (!validAmt) return toast.error("Enter an amount from ₹10 to ₹1,00,000"); setStep(2); }} className="space-y-4">
+      <div className="relative"><span className="absolute left-3 top-2.5 font-bold text-primary">₹</span><Input autoFocus inputMode="decimal" placeholder="100" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11 pl-8"/></div>
+      {validAmt && <p className="text-xs text-muted-foreground">You'll receive <b className="text-primary">₹{money.format(amt)}</b> Smart Money after verification.</p>}
+      <Button type="submit" variant="wallet" size="wallet" className="w-full" disabled={!validAmt}>Continue to payment</Button>
+    </form> : <UpiPayStep amount={amt} purpose="deposit" onBack={() => setStep(1)} onSubmitted={async () => { setAmount(""); change(false); await onDone(); }}/>}
+  </DialogContent></Dialog>;
+}
+
+/* ---------- VIP pass ---------- */
+const VIP_ROWS: [string, string, string][] = [
+  ["Spin Rewards", "1x coins", "2x DOUBLE coins every spin"],
+  ["Ad Rewards", "1x coins", "2x DOUBLE coins per ad"],
+  ["Daily Ads Limit", "20 ads/day", "50 ads/day"],
+  ["Goal Break Penalty", "₹10 penalty", "₹0 — break unlimited goals, full refund all month"],
+  ["Badge", "Standard profile", "Exclusive Gold Crown"],
+];
+export function VipDialog({ open, onOpenChange, balance, onPayWallet, busy, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; balance: number; onPayWallet: () => void; busy: boolean; onDone: () => Promise<void> }) {
+  const [upi, setUpi] = useState(false);
+  const change = (o: boolean) => { if (!o) setUpi(false); onOpenChange(o); };
+  return <Dialog open={open} onOpenChange={change}><DialogContent className={`${dialogCls} max-h-[90vh] overflow-y-auto border-primary`}>
+    <Crown className="mx-auto size-12 fill-current text-primary"/>
+    <DialogHeader><DialogTitle className="text-center">VIP Pass</DialogTitle><DialogDescription className="text-center"><span className="font-display text-3xl font-bold text-primary">₹49</span> <span className="text-xs">/ month</span></DialogDescription></DialogHeader>
+    {!upi ? <>
+      <div className="overflow-hidden rounded-xl border border-border text-xs">
+        <div className="grid grid-cols-[1fr_1fr_1.3fr] bg-muted/60 font-bold"><span className="p-2">Feature</span><span className="p-2">Free</span><span className="p-2 text-primary">VIP</span></div>
+        {VIP_ROWS.map(([f, a, b]) => <div key={f} className="grid grid-cols-[1fr_1fr_1.3fr] border-t border-border"><span className="p-2 font-semibold">{f}</span><span className="p-2 text-muted-foreground">{a}</span><span className="p-2 font-semibold text-primary">{b}</span></div>)}
       </div>
-      <div className="flex items-center justify-between rounded-xl border border-dashed border-primary bg-background/40 p-3">
-        <div><p className="text-[11px] text-muted-foreground">UPI ID</p><p className="font-mono font-bold text-primary">{VPA}</p></div>
-        <Button type="button" size="sm" variant="walletOutline" onClick={async () => { await navigator.clipboard.writeText(VPA); toast.success("UPI ID copied"); }}><Copy/>Copy</Button>
+      <div className="space-y-2">
+        <Button variant="wallet" size="wallet" className="w-full" disabled={busy || balance < 49} onClick={onPayWallet}>{busy && <LoaderCircle className="animate-spin"/>}Pay via Smart Money Wallet</Button>
+        <p className="text-center text-xs text-muted-foreground">Wallet balance: ₹{money.format(balance)}{balance < 49 ? " · need ₹49" : ""}</p>
+        <Button variant="walletOutline" size="wallet" className="w-full" onClick={() => setUpi(true)}>Pay via UPI</Button>
       </div>
-      <div><label className="mb-1.5 block text-sm font-semibold" htmlFor="utr">UTR / Reference number</label>
-        <Input id="utr" inputMode="numeric" maxLength={12} placeholder="12-digit UTR" value={utr} onChange={(e) => setUtr(e.target.value.replace(/\D/g, ""))} className="h-11 font-mono tracking-widest"/>
-        {utr.length > 0 && !validUtr && <p className="mt-1 text-xs text-destructive">{12 - utr.length} more digit(s) needed</p>}</div>
-      <DialogFooter><Button type="submit" variant="wallet" size="wallet" className="w-full" disabled={busy || !validAmt || !validUtr}>{busy && <LoaderCircle className="animate-spin"/>}Submit for verification</Button></DialogFooter>
-    </form>
+    </> : <UpiPayStep amount={49} purpose="vip" onBack={() => setUpi(false)} onSubmitted={async () => { change(false); await onDone(); }}/>}
   </DialogContent></Dialog>;
 }
 
