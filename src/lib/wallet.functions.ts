@@ -137,8 +137,8 @@ export const loadGoals = createServerFn({ method: "GET" })
 
 export const requestDeposit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ amount: z.number().min(10).max(100000), utr: z.string().regex(/^\d{12}$/) }).parse(i))
-  .handler(async ({ data, context }) => { await rpc("request_deposit", { uid_in: context.userId, amount_in: data.amount, utr_in: data.utr }); return { ok: true }; });
+  .inputValidator((i) => z.object({ amount: z.number().min(10).max(100000), utr: z.string().regex(/^\d{12}$/), purpose: z.enum(["deposit", "vip"]).default("deposit") }).parse(i))
+  .handler(async ({ data, context }) => { await rpc("request_deposit_for", { uid_in: context.userId, amount_in: data.amount, utr_in: data.utr, purpose_in: data.purpose }); return { ok: true }; });
 
 export const requestWithdrawal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

@@ -3,11 +3,12 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-type Ctx = { supabase: { rpc: (n: "has_role", a: { _user_id: string; _role: "admin" }) => PromiseLike<{ data: boolean | null }> }; userId: string };
+const ADMIN_EMAIL = "yuvrajsinghsingh498@gmail.com";
+type Ctx = { claims: { email?: string }; supabase: { rpc: (n: "has_role", a: { _user_id: string; _role: "admin" }) => PromiseLike<{ data: boolean | null }> }; userId: string };
 
 async function requireAdmin(context: Ctx) {
   const { data } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
-  if (!data) throw new Error("Access denied");
+  if (!data || (context.claims.email ?? "").toLowerCase() !== ADMIN_EMAIL) throw new Error("Access denied");
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
 }
 
@@ -15,7 +16,8 @@ export const checkAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
-    return { isAdmin: Boolean(data) };
+    const email = ((context.claims as { email?: string }).email ?? "").toLowerCase();
+    return { isAdmin: Boolean(data) && email === ADMIN_EMAIL };
   });
 
 export const adminLoad = createServerFn({ method: "GET" })
