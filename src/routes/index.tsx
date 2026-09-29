@@ -1,22 +1,24 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
-  Bell, Crown, WalletCards, Landmark, Plus, ChevronRight, Flame, PlaySquare,
-  Users, ReceiptText, Home, BadgeIndianRupee, History, UserRound, Gift, Coins,
-  LogOut, LoaderCircle, Trophy, Check, Copy, Share2, HelpCircle, Zap, Sparkles, ArrowDownLeft, ArrowUpRight,
+  Bell, Crown, WalletCards, Landmark, Plus, ChevronRight, Flame, PlaySquare, ShieldCheck, Volume2,
+  ReceiptText, Home, BadgeIndianRupee, History, UserRound, Gift, Coins,
+  LogOut, LoaderCircle, Trophy, Copy, HelpCircle, Zap, Sparkles, ArrowDownLeft, ArrowUpRight,
 } from "lucide-react";
 import { toast } from "@/components/ui/app-toast";
+import { Input } from "@/components/ui/input";
+import { checkAdmin } from "@/lib/admin.functions";
+import welcomeVideo from "@/assets/welcome-video.mp4.asset.json";
 
 import { Button } from "@/components/ui/button";
-import { DepositDialog, VipDialog, WithdrawDialog } from "@/components/wallet/extras";
+import { DepositDialog, VipDialog, WithdrawDialog, RedeemDialog, SavingsGoals, ReferSection } from "@/components/wallet/extras";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Input } from "@/components/ui/input";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  buyVip, claimReward, loadWallet, markNotificationsRead, redeemReferral, spinWheel, unlockSpinAd, watchAd,
+  buyVip, claimReward, loadWallet, markNotificationsRead, spinWheel, unlockSpinAd, watchAd,
 } from "@/lib/wallet.functions";
 
 type WalletData = Awaited<ReturnType<typeof loadWallet>>;
@@ -24,10 +26,10 @@ type Tab = "home" | "earn" | "spin" | "history" | "account";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
-    { title: "Smart Wallet — Money, Coins & Daily Rewards" },
+    { title: "Smart Saver — Money, Coins & Daily Rewards" },
     { name: "description", content: "Manage your withdrawable balance, earn coins, spin daily, grow streaks, and review wallet activity." },
-    { property: "og:title", content: "Smart Wallet — Money, Coins & Daily Rewards" },
-    { property: "og:description", content: "Your secure mobile wallet for balances, coins, spins, streaks, and rewards." },
+    { property: "og:title", content: "Smart Saver — Money, Coins & Daily Rewards" },
+    { property: "og:description", content: "Your Smart Saver wallet for balances, coins, spins, streaks, and rewards." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },
   ]}),
@@ -44,6 +46,7 @@ function SmartWalletPage() {
   const saveReward = useServerFn(claimReward);
   const purchaseVip = useServerFn(buyVip);
   const readAll = useServerFn(markNotificationsRead);
+  const verifyAdmin = useServerFn(checkAdmin);
   const [sessionReady, setSessionReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [walletData, setWalletData] = useState<WalletData | null>(null);
@@ -52,13 +55,20 @@ function SmartWalletPage() {
   const [vipOpen, setVipOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [amount, setAmount] = useState("");
+  const [redeemOpen, setRedeemOpen] = useState(false);
+  const [goalVersion, setGoalVersion] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [rewardMilestone, setRewardMilestone] = useState<100 | 200 | 500 | null>(null);
 
   const refresh = async () => {
     const result = await getWallet();
     setWalletData(result);
+    if (result.transactions.some((t) => t.description === "Welcome bonus") && typeof window !== "undefined" && !window.sessionStorage.getItem(`welcome-${result.user.id}`)) {
+      window.sessionStorage.setItem(`welcome-${result.user.id}`, "shown");
+      setWelcomeOpen(true);
+    }
     const pending = result.wallet.pending_milestone;
     if (pending === 100 || pending === 200 || pending === 500) setRewardMilestone(pending);
   };
@@ -70,14 +80,14 @@ function SmartWalletPage() {
       const hasSession = Boolean(data.session);
       setSignedIn(hasSession);
       setSessionReady(true);
-      if (hasSession) refresh().catch(() => toast.error("Could not load your wallet"));
+      if (hasSession) { refresh().catch(() => toast.error("Could not load your wallet")); verifyAdmin().then(r => setIsAdmin(r.isAdmin)).catch(() => undefined); }
     });
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       setSignedIn(Boolean(session));
       router.invalidate();
-      if (session) refresh().catch(() => toast.error("Could not load your wallet"));
-      else setWalletData(null);
+      if (session) { refresh().catch(() => toast.error("Could not load your wallet")); verifyAdmin().then(r => setIsAdmin(r.isAdmin)).catch(() => undefined); }
+      else { setWalletData(null); setIsAdmin(false); }
     });
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
@@ -121,7 +131,7 @@ function SmartWalletPage() {
     <main className="wallet-shell min-h-screen pb-28">
       <div className="mx-auto w-full max-w-[480px] px-4">
         <header className="flex h-20 items-center justify-between border-b border-primary/45">
-          <h1 className="font-display text-3xl font-bold text-primary">Smart Wallet</h1>
+          <h1 className="flex min-w-0 items-center gap-2 font-display text-2xl font-bold text-primary sm:text-3xl"><ShieldCheck className="size-7 shrink-0"/>Smart Saver</h1>
           <div className="flex items-center gap-4">
             <button aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`} className="relative text-primary" onClick={() => openNotifications(true)}>
               <Bell className="size-7 fill-current"/>
@@ -164,7 +174,7 @@ function SmartWalletPage() {
         {activeTab === "earn" && <EarnTab data={walletData} refresh={refresh}/>}
         {activeTab === "spin" && <SpinTab data={walletData} refresh={refresh}/>}
         {activeTab === "history" && <Transactions data={walletData.transactions}/>}
-        {activeTab === "account" && <AccountTab data={walletData} onVip={onVipClick} onSignOut={async () => { await supabase.auth.signOut(); setActiveTab("home"); }}/>}
+        {activeTab === "account" && <AccountTab data={walletData} isAdmin={isAdmin} onVip={onVipClick} onSignOut={async () => { await supabase.auth.signOut(); setActiveTab("home"); }}/>}
       </div>
 
       <BottomNav active={activeTab} setActive={setActiveTab}/>
@@ -179,7 +189,8 @@ function SmartWalletPage() {
         </SheetContent>
       </Sheet>
 
-      <DepositDialog open={addOpen} onOpenChange={setAddOpen} onDone={refresh}/>
+      <DepositDialog open={addOpen} onOpenChange={setAddOpen} onDone={async () => { await refresh(); setGoalVersion(v => v + 1); }}/>
+       <RedeemDialog open={redeemOpen} onOpenChange={setRedeemOpen} coins={wallet.coins} onDone={refresh}/>
       <WithdrawDialog open={withdrawOpen} onOpenChange={setWithdrawOpen} balance={Number(wallet.balance)} defaultUpi={wallet.default_upi} onDone={refresh}/>
       <VipDialog open={vipOpen} onOpenChange={setVipOpen} balance={Number(wallet.balance)} busy={saving} onPayWallet={handleVip} onDone={refresh}/>
 
@@ -222,66 +233,41 @@ function AdDialog({ open, onDone, onCancel, title }: { open: boolean; onDone: ()
 }
 
 /* ---------------- Earn tab ---------------- */
-function EarnTab({ data, refresh }: { data: WalletData; refresh: () => Promise<void> }) {
+function EarnTab({ data, refresh, onRedeem }: { data: WalletData; refresh: () => Promise<void>; onRedeem: () => void }) {
   const doWatch = useServerFn(watchAd);
-  const doRedeem = useServerFn(redeemReferral);
   const [adOpen, setAdOpen] = useState(false);
   const [tip, setTip] = useState(false);
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const myCode = data.wallet.referral_code;
-  const shareText = `Join me on Smart Wallet and earn coins daily! Use my referral code ${myCode}: ${typeof window !== "undefined" ? window.location.origin : ""}`;
-
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
+  const w = data.wallet;
+  const today = new Date().toDateString();
+  const adDate = w.last_ad_date ? new Date(`${w.last_ad_date}T00:00:00`).toDateString() : "";
+  const watched = adDate === today ? w.ads_watched_today : 0;
+  const limit = w.is_vip ? 50 : 20;
+  const reward = w.is_vip ? 20 : 10;
+  const cooldown = Math.max(0, Math.ceil(((w.last_ad_at ? new Date(w.last_ad_at).getTime() : 0) + 35000 - now) / 1000));
   const finishAd = async () => {
-    try { await doWatch(); await refresh(); toast.success("+10 coins earned!"); }
+    try { await doWatch(); await refresh(); toast.success(`+${reward} coins earned!`); }
     catch (e) { toast.error(errMsg(e, "Could not credit ad reward")); }
     finally { setAdOpen(false); }
   };
-  const share = async () => {
-    try {
-      if (navigator.share) await navigator.share({ title: "Smart Wallet", text: shareText });
-      else { await navigator.clipboard.writeText(shareText); toast.success("Invite link copied"); }
-    } catch { /* user cancelled */ }
-  };
-  const redeem = async (e: FormEvent) => {
-    e.preventDefault(); setBusy(true);
-    try { await doRedeem({ data: { code } }); setCode(""); await refresh(); toast.success("Referral code applied"); }
-    catch (err) { toast.error(errMsg(err, "Could not apply code")); }
-    finally { setBusy(false); }
-  };
-
   return <section className="pt-6">
-    <div className="rounded-2xl border border-primary/50 bg-card p-5">
-      <div className="relative flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
-        Smart Coin Balance
-        <button aria-label="Coin value info" onClick={() => setTip((t) => !t)} onBlur={() => setTip(false)} className="text-primary"><HelpCircle className="size-4"/></button>
-        {tip && <span className="absolute left-32 top-6 z-10 rounded-md border border-border bg-popover px-3 py-1.5 text-xs text-popover-foreground shadow-lg">100 Coins = ₹1</span>}
+    <div className="rounded-lg border border-primary/50 bg-card p-5">
+      <div className="relative flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">Smart Coin Balance
+        <Button variant="ghost" size="icon" aria-label="Coin value info" title="Coin value" onClick={() => setTip(t => !t)} className="size-6 text-primary"><HelpCircle className="size-4"/></Button>
+        {tip && <span className="absolute left-0 top-7 z-10 rounded-md border border-border bg-popover px-3 py-1.5 text-xs text-popover-foreground shadow-lg">100 Coins = ₹1</span>}
       </div>
-      <p className="mt-2 flex items-center gap-2 text-4xl font-extrabold text-primary"><Coins className="size-8"/>{data.wallet.coins.toLocaleString("en-IN")}</p>
-      <p className="mt-1 text-xs text-muted-foreground">≈ ₹{money.format(data.wallet.coins / 100)}</p>
+      <p className="mt-2 flex items-center gap-2 text-4xl font-extrabold text-primary"><Coins className="size-8"/>{w.coins.toLocaleString("en-IN")}</p>
+      <p className="mt-1 text-xs text-muted-foreground">≈ ₹{money.format(w.coins / 100)}</p>
+      <Button variant="wallet" size="wallet" className="mt-4 w-full" onClick={onRedeem} disabled={w.coins < 100}><Coins/>Redeem Coins · 100 = ₹1</Button>
     </div>
-
     <SectionTitle icon={<PlaySquare className="size-6 text-primary"/>}>Watch Video Ad</SectionTitle>
-    <div className="earn-video rounded-2xl border border-wallet-violet p-4">
-      <p className="font-bold">Watch a 5-second video</p>
-      <p className="mt-1 text-sm text-foreground/75">Earn +10 coins per ad (up to 20 per day).</p>
-      <Button className="mt-4 w-full" variant="wallet" size="wallet" onClick={() => setAdOpen(true)}><PlaySquare/>Watch Ad · +10 Coins</Button>
+    <div className="earn-video rounded-lg border border-wallet-violet p-4">
+      <div className="flex justify-between gap-3"><p className="font-bold">Daily ads</p><p className="font-bold text-primary">{watched} / {limit}</p></div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${watched / limit * 100}%` }}/></div>
+      <p className="mt-3 text-sm text-foreground/75">+{reward} coins per ad {w.is_vip ? "· VIP" : "· Free"}</p>
+      <Button className="mt-4 w-full" variant="wallet" size="wallet" disabled={adOpen || cooldown > 0 || watched >= limit} onClick={() => setAdOpen(true)}><PlaySquare/>{watched >= limit ? "Daily limit reached" : cooldown > 0 ? `Next ad in ${cooldown}s` : `Watch Ad · +${reward} Coins`}</Button>
     </div>
-
-    <SectionTitle icon={<Users className="size-6 text-primary"/>}>Refer & Earn</SectionTitle>
-    <div className="earn-refer rounded-2xl border border-wallet-green p-4">
-      <p className="text-sm text-foreground/80">Earn <span className="font-bold text-primary">+1,000 coins</span> when a friend joins with your code.</p>
-      <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-primary bg-background/40 p-3">
-        <span className="font-mono text-2xl font-bold tracking-widest text-primary">{myCode}</span>
-        <button aria-label="Copy code" onClick={async () => { await navigator.clipboard.writeText(myCode); toast.success("Code copied"); }} className="text-primary"><Copy className="size-5"/></button>
-      </div>
-      <Button className="mt-3 w-full" variant="wallet" size="wallet" onClick={share}><Share2/>Share Invite</Button>
-      {!data.wallet.referred_by && <form onSubmit={redeem} className="mt-4 flex gap-2">
-        <Input placeholder="Have a friend's code?" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={20} className="h-11"/>
-        <Button type="submit" variant="walletOutline" className="h-11" disabled={busy || code.trim().length < 4}>{busy ? <LoaderCircle className="animate-spin"/> : "Apply"}</Button>
-      </form>}
-    </div>
-
     <AdDialog open={adOpen} title="Video Ad" onDone={finishAd} onCancel={() => { setAdOpen(false); toast.info("Ad skipped — no coins earned"); }}/>
   </section>;
 }
@@ -300,6 +286,7 @@ function SpinTab({ data, refresh }: { data: WalletData; refresh: () => Promise<v
   const [spinning, setSpinning] = useState(false);
   const [tryAgainOpen, setTryAgainOpen] = useState(false);
   const [adOpen, setAdOpen] = useState(false);
+  const [win, setWin] = useState<number | null>(null);
   const { freeLeft, bonusAvailable, canWatchAd } = data.spin;
   const spinsLeft = freeLeft + (bonusAvailable ? 1 : 0);
 
@@ -313,7 +300,10 @@ function SpinTab({ data, refresh }: { data: WalletData; refresh: () => Promise<v
       setRotation((r) => r - (r % 360) + 360 * 6 + target);
       await new Promise((res) => setTimeout(res, 4200));
       const fresh = refresh();
-      if (prize > 0) toast.success(`You won ${prize} coins!`);
+      if (prize > 0) {
+        setWin(prize * (data.wallet.is_vip ? 2 : 1));
+        try { const ctx = new AudioContext(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = "sine"; osc.frequency.setValueAtTime(523, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(1046, ctx.currentTime + 0.25); gain.gain.setValueAtTime(0.08, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45); osc.connect(gain).connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.45); osc.onended = () => ctx.close(); } catch { /* audio unavailable */ }
+      }
       await fresh;
       if (prize === 0) setTryAgainOpen(true);
     } catch (e) { toast.error(errMsg(e, "Could not spin")); }
@@ -333,7 +323,9 @@ function SpinTab({ data, refresh }: { data: WalletData; refresh: () => Promise<v
     <p className="-mt-2 text-sm text-muted-foreground">{spinsLeft > 0 ? `${spinsLeft} spin${spinsLeft > 1 ? "s" : ""} left today` : "No spins left — resets tomorrow"}{data.wallet.is_vip && " · VIP bonus spin included"}</p>
 
     <div className="relative mx-auto mt-6 size-72">
+      {win !== null && <div className="pointer-events-none absolute inset-0 z-20 overflow-visible" aria-hidden="true">{Array.from({ length: 32 }, (_, i) => <span key={i} className="spin-confetti absolute left-1/2 top-1/2 size-2 bg-primary" style={{ "--angle": `${i * 137.5}deg`, "--distance": `${105 + (i % 5) * 35}px`, animationDelay: `${(i % 7) * 35}ms` } as React.CSSProperties}/>)}</div>}
       <div className="absolute left-1/2 top-[-6px] z-10 -translate-x-1/2 border-x-[14px] border-t-[24px] border-x-transparent border-t-primary drop-shadow"/>
+      <div className="absolute inset-[-9px] rounded-full border-2 border-primary/60 shadow-[0_0_30px_var(--primary)]"/>
       <div className="size-full rounded-full border-[6px] border-primary shadow-2xl shadow-primary/30" style={{ background: gradient, transform: `rotate(${rotation}deg)`, transition: spinning ? "transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "none" }}>
         {SEGMENTS.map((s, i) => <div key={s.label} className="absolute inset-0 flex justify-center pt-5" style={{ transform: `rotate(${i * 60 + 30}deg)` }}>
           <span className={`font-extrabold ${s.prize === 0 ? "text-xs text-foreground" : "text-lg text-background"}`}>{s.label}{s.prize > 0 && <Coins className="mx-auto size-3"/>}</span>
@@ -373,14 +365,13 @@ function AuthScreen() {
     else { const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: window.location.origin } }); if (error) throw error; if (!data.session) toast.success("Check your email to confirm your account"); }
   } catch (error) { toast.error(errMsg(error, "Sign-in failed")); } finally { setBusy(false); } };
   const google = async () => { const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin }); if (result.error) toast.error(result.error.message); };
-  return <main className="wallet-shell grid min-h-screen place-items-center p-5"><div className="w-full max-w-sm"><div className="mb-8 text-center"><WalletCards className="mx-auto mb-3 size-14 text-primary"/><h1 className="font-display text-4xl text-primary">Smart Wallet</h1><p className="mt-2 text-sm text-muted-foreground">Your money, coins, and rewards in one place.</p></div><div className="rounded-2xl border border-border bg-card p-5"><div className="mb-5 grid grid-cols-2 rounded-lg bg-muted p-1"><Button variant={mode === "signin" ? "wallet" : "ghost"} onClick={() => setMode("signin")}>Sign in</Button><Button variant={mode === "signup" ? "wallet" : "ghost"} onClick={() => setMode("signup")}>Create account</Button></div><form onSubmit={submit} className="space-y-4"><Input type="email" required maxLength={255} placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)}/><Input type="password" required minLength={8} maxLength={72} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)}/><Button className="w-full" variant="wallet" size="wallet" disabled={busy}>{busy && <LoaderCircle className="animate-spin"/>}{mode === "signin" ? "Sign in" : "Create account"}</Button></form><div className="my-4 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border"/>OR<span className="h-px flex-1 bg-border"/></div><Button className="w-full" variant="outline" size="wallet" onClick={google}>Continue with Google</Button></div></div></main>;
+  return <main className="wallet-shell grid min-h-screen place-items-center p-5"><div className="w-full max-w-sm"><div className="mb-8 text-center"><WalletCards className="mx-auto mb-3 size-14 text-primary"/><h1 className="font-display text-4xl text-primary">Smart Saver</h1><p className="mt-2 text-sm text-muted-foreground">Your money, coins, and rewards in one place.</p></div><div className="rounded-2xl border border-border bg-card p-5"><div className="mb-5 grid grid-cols-2 rounded-lg bg-muted p-1"><Button variant={mode === "signin" ? "wallet" : "ghost"} onClick={() => setMode("signin")}>Sign in</Button><Button variant={mode === "signup" ? "wallet" : "ghost"} onClick={() => setMode("signup")}>Create account</Button></div><form onSubmit={submit} className="space-y-4"><Input type="email" required maxLength={255} placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)}/><Input type="password" required minLength={8} maxLength={72} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)}/><Button className="w-full" variant="wallet" size="wallet" disabled={busy}>{busy && <LoaderCircle className="animate-spin"/>}{mode === "signin" ? "Sign in" : "Create account"}</Button></form><div className="my-4 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border"/>OR<span className="h-px flex-1 bg-border"/></div><Button className="w-full" variant="outline" size="wallet" onClick={google}>Continue with Google</Button></div></div></main>;
 }
 
 function SectionTitle({ children, icon }: { children: React.ReactNode; icon?: React.ReactNode }) { return <h2 className="mb-3 mt-6 flex items-center gap-2 text-2xl font-extrabold">{icon}{children}</h2>; }
-function EarnCard({ className, icon, title, reward, onClick }: { className: string; icon: React.ReactNode; title: string; reward: string; onClick: () => void }) { return <button onClick={onClick} className={`min-h-40 rounded-2xl border p-4 text-left shadow-xl ${className}`}><div className="[&_svg]:size-10">{icon}</div><div className="mt-5 flex items-end justify-between"><div><p className="text-base font-bold leading-tight">{title}</p><p className="mt-2 font-extrabold text-primary">{reward}</p></div><ChevronRight className="size-5"/></div></button>; }
 function OverviewRow({ icon, label, value, onClick }: { icon: React.ReactNode; label: string; value?: string; onClick: () => void }) { return <button onClick={onClick} className="mb-3 flex min-h-16 w-full items-center rounded-2xl border border-border bg-card/70 text-left"><span className="grid size-16 shrink-0 place-items-center border-r border-border text-primary [&_svg]:size-7">{icon}</span><span className="flex flex-1 items-center justify-between gap-2 px-4"><span className="text-sm font-semibold text-muted-foreground">{label}</span>{value && <span className="font-extrabold text-primary">{value}</span>}<ChevronRight className="size-5 shrink-0 text-muted-foreground"/></span></button>; }
 
-const KIND_LABEL: Record<string, string> = { deposit: "Deposit", withdrawal: "Withdrawal", reward: "Streak", earning: "Earning", ad: "Ad", spin: "Spin", referral: "Referral", vip: "VIP" };
+const KIND_LABEL: Record<string, string> = { convert: "Redeemed", goal: "Savings Goal", penalty: "Penalty", refund: "Refund", adjustment: "Adjustment", deposit: "Deposit", withdrawal: "Withdrawal", reward: "Streak", earning: "Earning", ad: "Ad", spin: "Spin", referral: "Referral", vip: "VIP" };
 function Transactions({ data }: { data: WalletData["transactions"] }) {
   return <section className="pt-6"><SectionTitle>Transaction History</SectionTitle>{data.length === 0 ? <EmptyTab icon={<ReceiptText/>} title="No transactions yet" text="Your wallet activity will appear here."/> : data.map((item) => {
     const debit = item.amount < 0;
@@ -396,13 +387,13 @@ function Transactions({ data }: { data: WalletData["transactions"] }) {
 }
 function EmptyTab({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) { return <section className="grid min-h-[60vh] place-items-center text-center"><div><div className="mx-auto mb-4 grid size-20 place-items-center rounded-full bg-card text-primary [&_svg]:size-10">{icon}</div><h2 className="text-xl font-bold">{title}</h2><p className="mt-2 text-sm text-muted-foreground">{text}</p></div></section>; }
 
-function AccountTab({ data, onVip, onSignOut }: { data: WalletData; onVip: () => void; onSignOut: () => void }) {
+function AccountTab({ data, isAdmin, onVip, onSignOut }: { data: WalletData; isAdmin: boolean; onVip: () => void; onSignOut: () => void }) {
   const w = data.wallet;
   const row = (label: string, value: React.ReactNode) => <div className="flex items-center justify-between gap-3 border-b border-border py-3 last:border-0"><span className="text-sm text-muted-foreground">{label}</span><span className="min-w-0 truncate text-right text-sm font-semibold">{value}</span></div>;
   return <section className="pt-6"><SectionTitle>Account</SectionTitle>
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex items-center gap-3"><div className={`grid size-14 place-items-center rounded-full ${w.is_vip ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"}`}>{w.is_vip ? <Crown className="fill-current"/> : <UserRound/>}</div>
-        <div className="min-w-0"><p className="truncate font-bold">{data.user.email || "Smart Wallet member"}</p><div className="mt-1"><VipBadge isVip={w.is_vip} onClick={onVip}/></div></div></div>
+        <div className="min-w-0"><p className="truncate font-bold">{data.user.email || "Smart Saver member"}</p><div className="mt-1"><VipBadge isVip={w.is_vip} onClick={onVip}/></div></div></div>
       {row("Email", data.user.email || "—")}
       {row("UID", <button className="inline-flex items-center gap-1 font-mono text-xs" onClick={async () => { await navigator.clipboard.writeText(data.user.id); toast.success("UID copied"); }}>{data.user.id.slice(0, 8)}…{data.user.id.slice(-4)}<Copy className="size-3"/></button>)}
       {row("VIP status", w.is_vip ? <span className="text-primary">Active</span> : <button className="text-primary underline" onClick={onVip}>Not active · Upgrade</button>)}
