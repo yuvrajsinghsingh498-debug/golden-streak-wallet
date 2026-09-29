@@ -176,3 +176,10 @@
 @utility earn-refer {
   background: linear-gradient(145deg, color-mix(in oklab, var(--wallet-green) 72%, var(--background)), color-mix(in oklab, var(--wallet-green) 42%, var(--background)));
 }
+
+@keyframes spin-confetti-fly {
+  0% { opacity: 1; transform: rotate(var(--angle)) translateY(0) scale(1); }
+  100% { opacity: 0; transform: rotate(var(--angle)) translateY(var(--distance)) scale(0.4); }
+}
+.spin-confetti { animation: spin-confetti-fly 1.3s ease-out forwards; }
+@media (prefers-reduced-motion: reduce) { .spin-confetti { animation: none; opacity: 0; } }
