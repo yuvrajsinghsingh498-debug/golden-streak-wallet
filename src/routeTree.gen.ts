@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminPortalRouteImport } from './routes/admin-portal'
+import { Route as ApiSupportChatRouteImport } from './routes/api/support-chat'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +23,40 @@ const AdminPortalRoute = AdminPortalRouteImport.update({
   path: '/admin-portal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSupportChatRoute = ApiSupportChatRouteImport.update({
+  id: '/api/support-chat',
+  path: '/api/support-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin-portal': typeof AdminPortalRoute
+  '/api/support-chat': typeof ApiSupportChatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin-portal': typeof AdminPortalRoute
+  '/api/support-chat': typeof ApiSupportChatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin-portal': typeof AdminPortalRoute
+  '/api/support-chat': typeof ApiSupportChatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin-portal'
+  fullPaths: '/' | '/admin-portal' | '/api/support-chat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin-portal'
-  id: '__root__' | '/' | '/admin-portal'
+  to: '/' | '/admin-portal' | '/api/support-chat'
+  id: '__root__' | '/' | '/admin-portal' | '/api/support-chat'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminPortalRoute: typeof AdminPortalRoute
+  ApiSupportChatRoute: typeof ApiSupportChatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPortalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/support-chat': {
+      id: '/api/support-chat'
+      path: '/api/support-chat'
+      fullPath: '/api/support-chat'
+      preLoaderRoute: typeof ApiSupportChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminPortalRoute: AdminPortalRoute,
+  ApiSupportChatRoute: ApiSupportChatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
