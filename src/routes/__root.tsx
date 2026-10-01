@@ -6,7 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
-, type ErrorComponentProps } from "@tanstack/react-router";
+  type ErrorComponentProps } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { AppToaster } from "@/components/ui/app-toast";
 
