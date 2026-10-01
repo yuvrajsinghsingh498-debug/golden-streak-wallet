@@ -160,11 +160,6 @@ function SmartWalletPage() {
             </div>
           </section>
 
-          <SectionTitle icon={<Flame className="size-7 fill-current text-primary"/>}>Quick Earn</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
-            <EarnCard className="earn-video border-wallet-violet" icon={<PlaySquare/>} title="Watch Video Ads" reward="+10 Coins" onClick={() => setActiveTab("earn")}/>
-            <EarnCard className="earn-refer border-wallet-green" icon={<Users/>} title="Refer & Earn" reward="+1,000 Coins" onClick={() => setActiveTab("earn")}/>
-          </div>
 
           <SectionTitle>Wallet Overview</SectionTitle>
           <OverviewRow icon={<WalletCards/>} label="Available Balance" value={`₹ ${money.format(wallet.balance)}`} onClick={() => setAddOpen(true)}/>
