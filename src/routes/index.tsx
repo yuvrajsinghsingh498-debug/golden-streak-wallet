@@ -166,7 +166,7 @@ function SmartWalletPage() {
           <OverviewRow icon={<ReceiptText/>} label={walletData.transactions.length ? `${walletData.transactions.length} recent transactions` : "Your transactions will appear here."} onClick={() => setActiveTab("history")}/>
         </>}
 
-        {activeTab === "earn" && <EarnTab data={walletData} refresh={refresh}/>}
+        {activeTab === "earn" && <EarnTab data={walletData} refresh={refresh} onRedeem={() => setRedeemOpen(true)}/>}
         {activeTab === "spin" && <SpinTab data={walletData} refresh={refresh}/>}
         {activeTab === "history" && <Transactions data={walletData.transactions}/>}
         {activeTab === "account" && <AccountTab data={walletData} isAdmin={isAdmin} onVip={onVipClick} onSignOut={async () => { await supabase.auth.signOut(); setActiveTab("home"); }}/>}
