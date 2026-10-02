@@ -1,14 +1,14 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { QRCodeSVG } from "qrcode.react";
-import { Copy, LoaderCircle, Target, Plus, Share2, Users, Coins, Crown } from "lucide-react";
+import { Copy, LoaderCircle, Target, Plus, Share2, Users, Coins, Crown, Trophy } from "lucide-react";
 
 import { toast } from "@/components/ui/app-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { breakGoal, convertCoins, createGoal, fundGoal, loadGoals, redeemReferral, requestDeposit, requestWithdrawal } from "@/lib/wallet.functions";
+import { breakGoal, convertCoins, createGoal, fundGoal, loadGoals, loadWeeklyReferrers, redeemReferral, requestDeposit, requestWithdrawal } from "@/lib/wallet.functions";
 
 const money = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const errMsg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
@@ -197,7 +197,10 @@ export function SavingsGoals({ isVip, balance, onChange, version }: { isVip: boo
 /* ---------- Refer & earn ---------- */
 export function ReferSection({ code: myCode, referredBy, onDone }: { code: string; referredBy: string | null; onDone: () => Promise<void> }) {
   const doRedeem = useServerFn(redeemReferral);
+  const getLeaders = useServerFn(loadWeeklyReferrers);
   const [code, setCode] = useState(""); const [busy, setBusy] = useState(false);
+  const [leaders, setLeaders] = useState<Awaited<ReturnType<typeof loadWeeklyReferrers>>>([]);
+  useEffect(() => { getLeaders().then(setLeaders).catch(() => undefined); }, []);
   const shareText = `Join me on Smart Saver and earn coins daily! Use my referral code ${myCode}: ${typeof window !== "undefined" ? window.location.origin : ""}`;
   const share = async () => {
     try { if (navigator.share) await navigator.share({ title: "Smart Saver", text: shareText }); else { await navigator.clipboard.writeText(shareText); toast.success("Invite link copied"); } } catch { /* cancelled */ }
@@ -207,19 +210,24 @@ export function ReferSection({ code: myCode, referredBy, onDone }: { code: strin
     try { await doRedeem({ data: { code } }); setCode(""); await onDone(); toast.success("Referral code applied"); }
     catch (err) { toast.error(errMsg(err, "Could not apply code")); } finally { setBusy(false); }
   };
-  return <div className="mt-8 text-left">
-    <h2 className="mb-3 flex items-center gap-2 text-2xl font-extrabold"><Users className="size-6 text-primary"/>Refer & Earn</h2>
-    <div className="earn-refer rounded-2xl border border-wallet-green p-4">
+  const whatsapp = () => window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, "_blank", "noopener,noreferrer");
+  return <div className="mt-10 text-left">
+    <h2 className="mb-3 flex items-center gap-2 font-display text-2xl font-bold text-gold-soft"><Users className="size-6 text-primary"/>Refer & Earn</h2>
+    <div className="rounded-lg border border-primary/50 bg-card p-4 shadow-[var(--shadow-gold)]">
       <p className="text-sm text-foreground/80">Earn <span className="font-bold text-primary">+1,000 coins</span> when a friend joins with your code.</p>
       <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-primary bg-background/40 p-3">
         <span className="font-mono text-2xl font-bold tracking-widest text-primary">{myCode}</span>
-        <button aria-label="Copy code" onClick={async () => { await navigator.clipboard.writeText(myCode); toast.success("Code copied"); }} className="text-primary"><Copy className="size-5"/></button>
+        <Button variant="ghost" size="icon" aria-label="Copy referral code" onClick={async () => { await navigator.clipboard.writeText(myCode); toast.success("Code copied"); }} className="text-primary"><Copy className="size-5"/></Button>
       </div>
-      <Button className="mt-3 w-full" variant="wallet" size="wallet" onClick={share}><Share2/>Share Invite</Button>
+      <div className="mt-3 grid grid-cols-2 gap-2"><Button variant="wallet" size="wallet" onClick={whatsapp}><Share2/>WhatsApp</Button><Button variant="walletOutline" size="wallet" onClick={share}><Share2/>Share</Button></div>
       {!referredBy && <form onSubmit={redeem} className="mt-4 flex gap-2">
         <Input placeholder="Have a friend's code?" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={20} className="h-11"/>
         <Button type="submit" variant="walletOutline" className="h-11" disabled={busy || code.trim().length < 4}>{busy ? <LoaderCircle className="animate-spin"/> : "Apply"}</Button>
       </form>}
+      <div className="mt-4 rounded-md border border-primary/30 bg-background/45 p-3">
+        <div className="flex items-center justify-between"><p className="flex items-center gap-2 text-xs font-bold uppercase text-primary"><Trophy className="size-4"/>Weekly top referrers</p><span className="text-[10px] text-muted-foreground">Last 7 days</span></div>
+        {leaders.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">Be the first name on this week’s leaderboard.</p> : <ol className="mt-2 space-y-1.5">{leaders.map((leader, index) => <li key={`${leader.label}-${index}`} className="flex items-center justify-between text-sm"><span><b className="mr-2 text-primary">#{index + 1}</b>{leader.label}</span><span className="font-semibold">{leader.referrals} referral{leader.referrals === 1 ? "" : "s"}</span></li>)}</ol>}
+      </div>
     </div>
   </div>;
 }
