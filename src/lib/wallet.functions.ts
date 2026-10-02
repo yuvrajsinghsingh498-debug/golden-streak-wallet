@@ -109,6 +109,39 @@ export const redeemReferral = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const loadWeeklyReferrers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const since = new Date();
+    since.setUTCDate(since.getUTCDate() - 7);
+    const db = await admin();
+    const { data: rows, error } = await db
+      .from("wallet_transactions")
+      .select("user_id")
+      .eq("kind", "referral")
+      .gte("created_at", since.toISOString());
+    if (error) throw new Error(error.message);
+
+    const counts = new Map<string, number>();
+    for (const row of rows ?? []) counts.set(row.user_id, (counts.get(row.user_id) ?? 0) + 1);
+    const ids = [...counts.keys()];
+    if (ids.length === 0) return [];
+
+    const { data: profiles, error: profileError } = await db
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", ids);
+    if (profileError) throw new Error(profileError.message);
+
+    return (profiles ?? [])
+      .map((profile) => ({
+        label: profile.full_name?.trim().split(/\s+/)[0] || `Saver ${profile.id.slice(0, 4).toUpperCase()}`,
+        referrals: counts.get(profile.id) ?? 0,
+      }))
+      .sort((a, b) => b.referrals - a.referrals)
+      .slice(0, 3);
+  });
+
 export const markNotificationsRead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {

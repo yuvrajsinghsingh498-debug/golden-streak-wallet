@@ -11,3 +11,4 @@
 
 - Keep payment approvals behind authenticated server functions with a verified admin role and exact admin email; client route checks only control presentation, not authorization.
 - Award the welcome bonus atomically in the first wallet check-in transaction; concurrent loads must not duplicate coins.
+- Keep referral leaderboard identities abbreviated and read them server-side so one member cannot inspect another member's profile.
