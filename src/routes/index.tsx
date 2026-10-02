@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import confetti from "canvas-confetti";
 import {
   Bell, Crown, WalletCards, Landmark, Plus, ChevronRight, Flame, PlaySquare, ShieldCheck, Volume2,
   ReceiptText, Home, BadgeIndianRupee, History, UserRound, Gift, Coins,
@@ -131,24 +132,25 @@ function SmartWalletPage() {
     <main className="wallet-shell min-h-screen pb-28">
       <div className="mx-auto w-full max-w-[480px] px-4">
         <header className="flex h-20 items-center justify-between border-b border-primary/45">
-          <h1 className="flex min-w-0 items-center gap-2 font-display text-2xl font-bold text-primary sm:text-3xl"><ShieldCheck className="size-7 shrink-0"/>Smart Saver</h1>
-          <div className="flex items-center gap-4">
-            <button aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`} className="relative text-primary" onClick={() => openNotifications(true)}>
+          <h1 className="flex min-w-0 items-center gap-2 font-display text-2xl font-bold text-gold-soft sm:text-3xl"><img src="/brand-emblem.png" alt="" className="size-12 shrink-0 object-contain"/>Smart Saver</h1>
+          <div className="flex items-center gap-2">
+            <div id="header-coin-balance" className="hidden items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary sm:flex"><Coins className="size-4"/>{wallet.coins.toLocaleString("en-IN")}</div>
+            <Button variant="ghost" size="icon" aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`} className="relative text-primary" onClick={() => openNotifications(true)}>
               <Bell className="size-7 fill-current"/>
               {unread > 0 && <span className="absolute -right-2 -top-2 grid size-5 place-items-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">{unread > 9 ? "9+" : unread}</span>}
-            </button>
+            </Button>
             <VipBadge isVip={wallet.is_vip} onClick={onVipClick}/>
           </div>
         </header>
 
         {activeTab === "home" && <>
-          <section className="money-card relative mt-5 overflow-hidden rounded-3xl border border-wallet-cyan p-5 shadow-2xl">
+          <section className="money-card relative mt-5 overflow-hidden rounded-lg border border-primary/50 p-5 shadow-[var(--shadow-gold)]">
             <WalletCards className="absolute -right-5 top-7 size-36 rotate-[-12deg] text-foreground/15" strokeWidth={1.5}/>
             <div className="relative flex items-start gap-4"><div className="grid size-14 place-items-center rounded-2xl bg-foreground/15"><WalletCards className="size-9"/></div><div><h2 className="text-xl font-extrabold">SMART MONEY</h2><p className="text-sm text-foreground/75">Withdrawable Balance</p></div></div>
             <div className="relative mt-5 text-4xl font-extrabold">₹ {money.format(wallet.balance)}</div>
             <div className="relative mt-6 grid grid-cols-2 gap-3">
               <Button variant="walletOutline" size="wallet" onClick={() => setWithdrawOpen(true)}><Landmark/>Withdraw<ChevronRight/></Button>
-              <Button variant="wallet" size="wallet" onClick={() => setAddOpen(true)}><Plus className="rounded-full bg-primary-foreground p-0.5 text-primary"/>Add Money<ChevronRight/></Button>
+              <Button variant="wallet" size="wallet" onClick={() => setAddOpen(true)}><Plus className="rounded-full bg-primary-foreground p-0.5 text-primary"/>Add Coins<ChevronRight/></Button>
             </div>
           </section>
 
@@ -160,6 +162,8 @@ function SmartWalletPage() {
             </div>
           </section>
 
+          <SavingsGoals isVip={wallet.is_vip} balance={Number(wallet.balance)} version={goalVersion} onChange={async () => { await refresh(); setGoalVersion(v => v + 1); }}/>
+
 
           <SectionTitle>Wallet Overview</SectionTitle>
           <OverviewRow icon={<WalletCards/>} label="Available Balance" value={`₹ ${money.format(wallet.balance)}`} onClick={() => setAddOpen(true)}/>
@@ -167,7 +171,7 @@ function SmartWalletPage() {
         </>}
 
         {activeTab === "earn" && <EarnTab data={walletData} refresh={refresh} onRedeem={() => setRedeemOpen(true)}/>}
-        {activeTab === "spin" && <SpinTab data={walletData} refresh={refresh}/>}
+        {activeTab === "spin" && <SpinTab data={walletData} refresh={refresh} onVip={() => setVipOpen(true)}/>} 
         {activeTab === "history" && <Transactions data={walletData.transactions}/>}
         {activeTab === "account" && <AccountTab data={walletData} isAdmin={isAdmin} onVip={onVipClick} onSignOut={async () => { await supabase.auth.signOut(); setActiveTab("home"); }}/>}
       </div>
@@ -195,9 +199,9 @@ function SmartWalletPage() {
 }
 
 function VipBadge({ isVip, onClick }: { isVip: boolean; onClick: () => void }) {
-  return <button onClick={onClick} className={`flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 font-extrabold ${isVip ? "border-primary bg-primary/15 text-primary shadow-[0_0_18px] shadow-primary/40" : "border-muted-foreground/50 text-muted-foreground"}`}>
+  return <Button variant="ghost" onClick={onClick} className={`flex h-9 items-center gap-1.5 rounded-full border-2 px-3 font-extrabold ${isVip ? "border-primary bg-primary/15 text-primary shadow-[0_0_18px] shadow-primary/40" : "border-muted-foreground/50 text-muted-foreground"}`}>
     <Crown className={`size-5 ${isVip ? "fill-current" : ""}`}/>{isVip ? "VIP" : "Get VIP"}
-  </button>;
+  </Button>;
 }
 
 function formatTime(iso: string) {
@@ -272,9 +276,9 @@ const SEGMENTS = [
   { label: "10", prize: 10 }, { label: "20", prize: 20 }, { label: "50", prize: 50 },
   { label: "100", prize: 100 }, { label: "200", prize: 200 }, { label: "Try Again", prize: 0 },
 ];
-const SEG_COLORS = ["var(--wallet-blue)", "var(--wallet-violet)", "var(--wallet-green)", "var(--wallet-cyan)", "var(--primary)", "var(--muted)"];
+const SEG_COLORS = ["var(--secondary)", "var(--card)", "color-mix(in oklab, var(--secondary) 72%, var(--primary))", "color-mix(in oklab, var(--card) 80%, var(--primary))", "var(--secondary)", "var(--card)"];
 
-function SpinTab({ data, refresh }: { data: WalletData; refresh: () => Promise<void> }) {
+function SpinTab({ data, refresh, onVip }: { data: WalletData; refresh: () => Promise<void>; onVip: () => void }) {
   const doSpin = useServerFn(spinWheel);
   const doUnlock = useServerFn(unlockSpinAd);
   const [rotation, setRotation] = useState(0);
@@ -282,6 +286,7 @@ function SpinTab({ data, refresh }: { data: WalletData; refresh: () => Promise<v
   const [tryAgainOpen, setTryAgainOpen] = useState(false);
   const [adOpen, setAdOpen] = useState(false);
   const [win, setWin] = useState<number | null>(null);
+  const [coinsFlying, setCoinsFlying] = useState(false);
   const { freeLeft, bonusAvailable, canWatchAd } = data.spin;
   const spinsLeft = freeLeft + (bonusAvailable ? 1 : 0);
 
@@ -294,12 +299,18 @@ function SpinTab({ data, refresh }: { data: WalletData; refresh: () => Promise<v
       const target = 360 - (idx * 60 + 30);
       setRotation((r) => r - (r % 360) + 360 * 6 + target);
       await new Promise((res) => setTimeout(res, 4200));
-      const fresh = refresh();
       if (prize > 0) {
-        setWin(prize * (data.wallet.is_vip ? 2 : 1));
+        const awarded = prize * (data.wallet.is_vip ? 2 : 1);
+        setWin(awarded);
+        setCoinsFlying(true);
+        window.setTimeout(() => setCoinsFlying(false), 1350);
+        if (navigator.vibrate) navigator.vibrate([70, 45, 120]);
+        confetti({ particleCount: 110, spread: 92, startVelocity: 42, origin: { y: 0.62 }, colors: ["#c5a059", "#f5e0b8", "#ffffff", "#4cc9a4", "#f05d5e"] });
+        window.setTimeout(() => confetti({ particleCount: 65, angle: 60, spread: 70, origin: { x: 0, y: 0.55 }, colors: ["#c5a059", "#f5e0b8", "#ffffff"] }), 180);
+        window.setTimeout(() => confetti({ particleCount: 65, angle: 120, spread: 70, origin: { x: 1, y: 0.55 }, colors: ["#c5a059", "#f5e0b8", "#ffffff"] }), 220);
         try { const ctx = new AudioContext(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = "sine"; osc.frequency.setValueAtTime(523, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(1046, ctx.currentTime + 0.25); gain.gain.setValueAtTime(0.08, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45); osc.connect(gain).connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.45); osc.onended = () => ctx.close(); } catch { /* audio unavailable */ }
       }
-      await fresh;
+      await refresh();
       if (prize === 0) setTryAgainOpen(true);
     } catch (e) { toast.error(errMsg(e, "Could not spin")); }
     finally { setSpinning(false); }
@@ -314,25 +325,39 @@ function SpinTab({ data, refresh }: { data: WalletData; refresh: () => Promise<v
   const gradient = `conic-gradient(${SEGMENTS.map((_, i) => `${SEG_COLORS[i]} ${i * 60}deg ${(i + 1) * 60}deg`).join(", ")})`;
 
   return <section className="pt-6 text-center">
-    <SectionTitle icon={<Gift className="size-7 text-primary"/>}>Lucky Spin</SectionTitle>
+    <SectionTitle icon={<Gift className="size-7 text-primary"/>}>Spin the Wheel</SectionTitle>
     <p className="-mt-2 text-sm text-muted-foreground">{spinsLeft > 0 ? `${spinsLeft} spin${spinsLeft > 1 ? "s" : ""} left today` : "No spins left — resets tomorrow"}{data.wallet.is_vip && " · VIP bonus spin included"}</p>
 
-    <div className="relative mx-auto mt-6 size-72">
-      {win !== null && <div className="pointer-events-none absolute inset-0 z-20 overflow-visible" aria-hidden="true">{Array.from({ length: 32 }, (_, i) => <span key={i} className="spin-confetti absolute left-1/2 top-1/2 size-2 bg-primary" style={{ "--angle": `${i * 137.5}deg`, "--distance": `${105 + (i % 5) * 35}px`, animationDelay: `${(i % 7) * 35}ms` } as React.CSSProperties}/>)}</div>}
-      <div className="absolute left-1/2 top-[-6px] z-10 -translate-x-1/2 border-x-[14px] border-t-[24px] border-x-transparent border-t-primary drop-shadow"/>
-      <div className="absolute inset-[-9px] rounded-full border-2 border-primary/60 shadow-[0_0_30px_var(--primary)]"/>
-      <div className="size-full rounded-full border-[6px] border-primary shadow-2xl shadow-primary/30" style={{ background: gradient, transform: `rotate(${rotation}deg)`, transition: spinning ? "transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "none" }}>
+    <div className="relative mx-auto mt-8 size-72 sm:size-80">
+      <div className="spin-pointer-glow absolute left-1/2 top-[-14px] z-20 -translate-x-1/2"><div className="h-10 w-8 rounded-t-full border-2 border-gold-soft bg-primary shadow-[0_0_22px_var(--primary)] [clip-path:polygon(0_0,100%_0,50%_100%)]"/></div>
+      <div className="absolute inset-[-16px] rounded-full border border-primary/45 bg-card shadow-[0_0_45px_color-mix(in_oklab,var(--primary)_28%,transparent)]"/>
+      <div className="absolute inset-[-9px] rounded-full border-[7px] border-double border-primary bg-secondary shadow-inner"/>
+      <div className="relative size-full rounded-full border-[3px] border-gold-soft shadow-2xl" style={{ background: gradient, transform: `rotate(${rotation}deg)`, transition: spinning ? "transform 4.2s cubic-bezier(0.08, 0.68, 0.08, 1)" : "none" }}>
         {SEGMENTS.map((s, i) => <div key={s.label} className="absolute inset-0 flex justify-center pt-5" style={{ transform: `rotate(${i * 60 + 30}deg)` }}>
-          <span className={`font-extrabold ${s.prize === 0 ? "text-xs text-foreground" : "text-lg text-background"}`}>{s.label}{s.prize > 0 && <Coins className="mx-auto size-3"/>}</span>
+          <span className={`drop-shadow-sm ${s.prize === 0 ? "max-w-12 text-xs font-bold text-gold-soft" : "text-lg font-extrabold text-gold-soft"}`}>{s.label}{s.prize > 0 && <Coins className="mx-auto size-3"/>}</span>
         </div>)}
       </div>
-      <button onClick={spin} disabled={spinning || spinsLeft === 0} className="absolute left-1/2 top-1/2 grid size-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-4 border-background bg-primary font-extrabold text-primary-foreground shadow-xl disabled:opacity-60">
+      <Button variant="wallet" onClick={spin} disabled={spinning || spinsLeft === 0} className="absolute left-1/2 top-1/2 grid size-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-4 border-gold-soft bg-primary p-0 font-extrabold text-primary-foreground shadow-[0_0_25px_var(--primary)] disabled:opacity-60">
         {spinning ? <LoaderCircle className="animate-spin"/> : "SPIN"}
-      </button>
+      </Button>
     </div>
 
     {canWatchAd && !spinning && <Button className="mt-6 w-full" variant="walletOutline" size="wallet" onClick={() => setAdOpen(true)}><PlaySquare/>Watch Ad for Extra Spin</Button>}
     <p className="mt-6 text-xs text-muted-foreground">1 free spin per day. Landing on “Try Again” lets you watch one ad for a bonus spin.</p>
+
+    <ReferSection code={data.wallet.referral_code} referredBy={data.wallet.referred_by} onDone={refresh}/>
+
+    {coinsFlying && <div className="pointer-events-none fixed inset-0 z-[70]" aria-hidden="true">{Array.from({ length: 12 }, (_, i) => <Coins key={i} className="coin-flight absolute bottom-[26%] left-1/2 size-7 text-primary" style={{ "--coin-mid-x": `${(i - 6) * 13}px`, "--coin-end-x": `${130 + (i % 4) * 12}px`, "--coin-end-y": `${-65 - (i % 3) * 10}vh`, animationDelay: `${i * 45}ms` } as CSSProperties}/>)}</div>}
+
+    <Dialog open={win !== null} onOpenChange={(open) => { if (!open) setWin(null); }}>
+      <DialogContent className="w-[calc(100%-2rem)] overflow-hidden rounded-lg border-primary bg-card text-center shadow-[0_0_55px_color-mix(in_oklab,var(--primary)_30%,transparent)]">
+        <div className="absolute inset-x-0 top-0 h-1 bg-primary"/>
+        <div className="mx-auto grid size-20 place-items-center rounded-full border border-primary bg-primary/10 shadow-[0_0_30px_color-mix(in_oklab,var(--primary)_35%,transparent)]"><Trophy className="size-10 text-primary"/></div>
+        <DialogHeader><DialogTitle className="text-center font-display text-3xl text-gold-soft">Congratulations!</DialogTitle><DialogDescription className="text-center text-base">You Won <span className="font-bold text-primary">{win?.toLocaleString("en-IN")} Coins!</span></DialogDescription></DialogHeader>
+        <Button variant="wallet" size="wallet" className="w-full shadow-[0_0_24px_color-mix(in_oklab,var(--primary)_35%,transparent)]" onClick={() => { setWin(null); if (!data.wallet.is_vip) onVip(); }}>{data.wallet.is_vip ? <><Gift/>Claim Reward</> : <><Crown/>Claim & Double with VIP</>}</Button>
+        {!data.wallet.is_vip && <Button variant="ghost" onClick={() => setWin(null)}>Claim reward only</Button>}
+      </DialogContent>
+    </Dialog>
 
     <Dialog open={tryAgainOpen} onOpenChange={setTryAgainOpen}>
       <DialogContent className="w-[calc(100%-2rem)] rounded-2xl border-primary bg-card text-center">
