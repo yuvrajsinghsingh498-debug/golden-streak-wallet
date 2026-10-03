@@ -12,3 +12,7 @@
 - Keep payment approvals behind authenticated server functions with a verified admin role and exact admin email; client route checks only control presentation, not authorization.
 - Award the welcome bonus atomically in the first wallet check-in transaction; concurrent loads must not duplicate coins.
 - Keep referral leaderboard identities abbreviated and read them server-side so one member cannot inspect another member's profile.
+
+- Render site verification tags through the root route head because TanStack Start has no index.html entry.
+- Treat sponsored placements as placeholders until a provider zone/script is supplied; verification metadata alone must not be represented as live ads.
+- Keep the rewarded-ad cooldown synchronized between the database function and Earn screen; skipped ads must not invoke reward crediting.

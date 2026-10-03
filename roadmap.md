@@ -12,3 +12,5 @@
 
 - [ ] Home and Account legal disclaimer; Terms & Privacy modal
 - [ ] Account Help & Support assistant plus direct founder email
+
+- [ ] October updates: full-width mobile layout, Smart Money tooltip, Monetag verification and sponsored placeholders, 15s ad cooldown, zero-reward skips, history notice, Account disclaimer and search metadata.
