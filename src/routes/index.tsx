@@ -150,7 +150,7 @@ function SmartWalletPage() {
             <WalletCards className="pointer-events-none absolute right-3 top-7 size-28 text-foreground/10" strokeWidth={1.5}/>
             <div className="relative"><div className="flex items-center gap-1"><h2 className="text-xl font-extrabold">SMART MONEY</h2><Button variant="ghost" size="icon" className="size-7 shrink-0 text-primary" aria-label="Smart Money value information" onClick={() => setMoneyInfoOpen(true)}><HelpCircle className="size-4"/></Button></div><p className="text-sm text-foreground/75">Withdrawable Balance</p></div>
             <div className="relative mt-5 text-4xl font-extrabold">₹ {money.format(wallet.balance)}</div>
-            <div className="relative mt-6 grid grid-cols-[0.85fr_1.35fr] gap-2 max-[359px]:grid-cols-1">
+            <div className="relative mt-6 grid grid-cols-1 gap-2 min-[480px]:grid-cols-[minmax(0,0.85fr)_minmax(0,1.35fr)]">
               <Button variant="walletOutline" size="wallet" onClick={() => setWithdrawOpen(true)}><Landmark/>Withdraw<ChevronRight/></Button>
               <Button variant="wallet" size="wallet" onClick={() => setAddOpen(true)}>Add Smart Money &gt;</Button>
             </div>
