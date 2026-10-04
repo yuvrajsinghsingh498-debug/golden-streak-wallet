@@ -4,12 +4,11 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEven
 import confetti from "canvas-confetti";
 import {
   Bell, Crown, WalletCards, Landmark, Plus, ChevronRight, Flame, PlaySquare, ShieldCheck, Volume2,
-  ReceiptText, Home, BadgeIndianRupee, History, UserRound, Gift, Coins,
+  ReceiptText, Home, BadgeIndianRupee, History, UserRound, Gift, Coins, Users,
   LogOut, LoaderCircle, Trophy, Copy, HelpCircle, Zap, Sparkles, ArrowDownLeft, ArrowUpRight,
 } from "lucide-react";
 import { toast } from "@/components/ui/app-toast";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { checkAdmin } from "@/lib/admin.functions";
 import welcomeVideo from "@/assets/welcome-video.mp4.asset.json";
 
@@ -59,6 +58,7 @@ function SmartWalletPage() {
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
+  const [moneyInfoOpen, setMoneyInfoOpen] = useState(false);
   const [goalVersion, setGoalVersion] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
@@ -131,32 +131,32 @@ function SmartWalletPage() {
   const onVipClick = () => { if (wallet.is_vip) toast.info("You're a VIP member"); else setVipOpen(true); };
 
   return (
-    <main className={`wallet-shell min-h-dvh w-full ${["home", "earn", "history"].includes(activeTab) ? "pb-[calc(8rem+env(safe-area-inset-bottom))]" : "pb-[calc(5rem+env(safe-area-inset-bottom))]"}`}>
+    <main className={`wallet-shell w-full pb-24 ${["earn", "history"].includes(activeTab) ? "pb-[calc(8rem+env(safe-area-inset-bottom))]" : "pb-[calc(6rem+env(safe-area-inset-bottom))]"}`}>
       <div className="mx-auto w-full px-4">
-        <header className="flex min-h-16 flex-wrap items-center justify-between gap-2 py-2 border-b border-primary/45">
-          <h1 className="flex min-w-0 items-center gap-2 font-display text-xl font-bold text-gold-soft sm:text-3xl"><img src="/brand-emblem.png" alt="" className="size-9 shrink-0 object-contain sm:size-12"/>Smart Saver</h1>
+        <header className="flex min-h-16 flex-wrap items-center justify-between gap-2 py-3">
+          <h1 className="flex min-w-0 items-center gap-2 font-display text-xl font-bold text-gold-soft sm:text-3xl"><img src="/brand-emblem-transparent.png" alt="" className="size-9 shrink-0 object-contain sm:size-12"/>Smart Saver</h1>
           <div className="flex items-center gap-2">
             <div id="header-coin-balance" className="hidden items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary sm:flex"><Coins className="size-4"/>{wallet.coins.toLocaleString("en-IN")}</div>
+            <VipBadge isVip={wallet.is_vip} onClick={onVipClick}/>
             <Button variant="ghost" size="icon" aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`} className="relative text-primary" onClick={() => openNotifications(true)}>
               <Bell className="size-7 fill-current"/>
               {unread > 0 && <span className="absolute -right-2 -top-2 grid size-5 place-items-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">{unread > 9 ? "9+" : unread}</span>}
             </Button>
-            <VipBadge isVip={wallet.is_vip} onClick={onVipClick}/>
           </div>
         </header>
 
         {activeTab === "home" && <>
-          <section className="money-card relative mt-5 overflow-hidden rounded-lg border border-primary/50 p-5 shadow-[var(--shadow-gold)]">
-            <WalletCards className="absolute -right-5 top-7 size-36 rotate-[-12deg] text-foreground/15" strokeWidth={1.5}/>
-            <div className="relative flex items-start gap-4"><div className="grid size-14 place-items-center rounded-2xl bg-foreground/15"><WalletCards className="size-9"/></div><div><div className="flex items-center gap-1"><h2 className="text-xl font-extrabold">SMART MONEY</h2><Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" className="size-7 shrink-0 text-primary" aria-label="Smart Money value information"><HelpCircle className="size-4"/></Button></PopoverTrigger><PopoverContent side="bottom" className="max-w-[calc(100vw-2rem)] text-sm" role="tooltip">1 Smart Money = ₹1. Withdrawable balance for goals and UPI cashout.</PopoverContent></Popover></div><p className="text-sm text-foreground/75">Withdrawable Balance</p></div></div>
+          <section className="money-card relative mt-3 rounded-lg border border-primary/50 p-4 sm:p-5 shadow-[var(--shadow-gold)]">
+            <WalletCards className="pointer-events-none absolute right-3 top-7 size-28 text-foreground/10" strokeWidth={1.5}/>
+            <div className="relative"><div className="flex items-center gap-1"><h2 className="text-xl font-extrabold">SMART MONEY</h2><Button variant="ghost" size="icon" className="size-7 shrink-0 text-primary" aria-label="Smart Money value information" onClick={() => setMoneyInfoOpen(true)}><HelpCircle className="size-4"/></Button></div><p className="text-sm text-foreground/75">Withdrawable Balance</p></div>
             <div className="relative mt-5 text-4xl font-extrabold">₹ {money.format(wallet.balance)}</div>
-            <div className="relative mt-6 grid grid-cols-[0.85fr_1.35fr] gap-2 max-[359px]:grid-cols-1">
+            <div className="relative mt-6 grid grid-cols-1 gap-2 min-[480px]:grid-cols-[minmax(0,0.85fr)_minmax(0,1.35fr)]">
               <Button variant="walletOutline" size="wallet" onClick={() => setWithdrawOpen(true)}><Landmark/>Withdraw<ChevronRight/></Button>
               <Button variant="wallet" size="wallet" onClick={() => setAddOpen(true)}>Add Smart Money &gt;</Button>
             </div>
           </section>
 
-          <section className="mt-5 rounded-2xl border border-border bg-card/80 p-4 shadow-xl">
+          <section className="mt-5 rounded-lg border border-border bg-card/80 p-4">
             <div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase text-primary">Daily Streak Reward</p><h2 className="mt-1 flex items-center gap-2 text-xl font-extrabold"><Flame className="size-6 fill-current text-primary"/>{wallet.current_streak} Days Active</h2></div><div className="text-right"><p className="text-xs text-muted-foreground">Coin balance</p><p className="font-bold text-primary"><Coins className="mr-1 inline size-4"/>{wallet.coins.toLocaleString("en-IN")}</p></div></div>
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, wallet.current_streak / 5)}%` }}/></div>
             <div className="mt-4 grid grid-cols-3 gap-2">
@@ -167,9 +167,11 @@ function SmartWalletPage() {
           <SavingsGoals isVip={wallet.is_vip} balance={Number(wallet.balance)} version={goalVersion} onChange={async () => { await refresh(); setGoalVersion(v => v + 1); }}/>
 
 
-          <SectionTitle>Wallet Overview</SectionTitle>
-          <OverviewRow icon={<WalletCards/>} label="Available Balance" value={`₹ ${money.format(wallet.balance)}`} onClick={() => setAddOpen(true)}/>
-          <OverviewRow icon={<ReceiptText/>} label={walletData.transactions.length ? `${walletData.transactions.length} recent transactions` : "Your transactions will appear here."} onClick={() => setActiveTab("history")}/>
+          <section className="mt-6" aria-label="Wallet Overview / Recent Activity">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-xl font-extrabold sm:text-2xl">Wallet Overview</h2><p className="mt-1 text-xs text-muted-foreground">Recent Activity</p></div><Button variant="ghost" className="px-0 text-primary" onClick={() => setActiveTab("history")}>View All &gt;</Button></div>
+            {walletData.transactions.length === 0 ? <p className="py-4 text-sm text-muted-foreground">Your transactions will appear here.</p> : <div className="divide-y divide-border">{walletData.transactions.slice(0, 5).map((item) => <div key={item.id} className="flex items-center gap-3 py-3"><span className={`grid size-9 shrink-0 place-items-center rounded-full ${item.amount < 0 ? "bg-destructive/15 text-destructive" : "bg-primary/10 text-primary"}`}>{item.amount < 0 ? <ArrowUpRight className="size-4"/> : <ArrowDownLeft className="size-4"/>}</span><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{item.description}</p><p className="mt-1 text-[11px] text-muted-foreground">{formatTime(item.created_at)}</p></div><div className="shrink-0 text-right text-sm font-bold">{item.amount !== 0 && <p className={item.amount < 0 ? "text-destructive" : "text-primary"}>{item.amount < 0 ? "−" : "+"}₹{money.format(Math.abs(item.amount))}</p>}{item.coins !== 0 && <p className="text-primary">{item.coins > 0 ? "+" : ""}{item.coins.toLocaleString("en-IN")} coins</p>}</div></div>)}</div>}
+          </section>
+          <section className="mt-6 rounded-lg border border-primary/40 bg-card p-4" aria-label="Referral promotion"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary"><Users className="size-5"/></span><div><h2 className="font-display text-xl font-bold text-gold-soft">Refer friends &amp; earn bonus coins</h2><p className="mt-2 text-sm text-muted-foreground">Earn 1,000 coins when a friend joins with your code.</p></div></div><Button variant="walletOutline" className="mt-4 w-full" onClick={() => setActiveTab("spin")}>Refer &amp; Earn<ChevronRight/></Button></section>
         </>}
 
         {activeTab === "earn" && <EarnTab data={walletData} refresh={refresh} onRedeem={() => setRedeemOpen(true)}/>}
@@ -178,7 +180,7 @@ function SmartWalletPage() {
         {activeTab === "account" && <AccountTab data={walletData} isAdmin={isAdmin} onVip={onVipClick} onSignOut={async () => { await supabase.auth.signOut(); setActiveTab("home"); }}/>}
       </div>
 
-      {["home", "earn", "history"].includes(activeTab) && <aside aria-label="Sponsored Ad" className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex h-12 w-full items-center justify-center border-t border-border bg-background px-4 text-xs text-muted-foreground">Sponsored Ad</aside>}
+      {["earn", "history"].includes(activeTab) && <aside aria-label="Sponsored Ad" className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex h-12 w-full items-center justify-center border-t border-border bg-background px-4 text-xs text-muted-foreground">Sponsored Ad</aside>}
       <BottomNav active={activeTab} setActive={setActiveTab}/>
 
       <Sheet open={notifOpen} onOpenChange={openNotifications}>
@@ -191,6 +193,7 @@ function SmartWalletPage() {
         </SheetContent>
       </Sheet>
 
+      <Dialog open={moneyInfoOpen} onOpenChange={setMoneyInfoOpen}><DialogContent className="w-[calc(100%-2rem)] rounded-lg border-border bg-card"><DialogHeader><DialogTitle>About Smart Money</DialogTitle><DialogDescription>1 Smart Money = ₹1. Withdrawable balance for goals and UPI cashout.</DialogDescription></DialogHeader><Button variant="wallet" onClick={() => setMoneyInfoOpen(false)}>Got it</Button></DialogContent></Dialog>
       <DepositDialog open={addOpen} onOpenChange={setAddOpen} onDone={async () => { await refresh(); setGoalVersion(v => v + 1); }}/>
        <RedeemDialog open={redeemOpen} onOpenChange={setRedeemOpen} coins={wallet.coins} onDone={refresh}/>
       <WithdrawDialog open={withdrawOpen} onOpenChange={setWithdrawOpen} balance={Number(wallet.balance)} defaultUpi={wallet.default_upi} onDone={refresh}/>

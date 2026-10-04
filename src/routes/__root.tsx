@@ -82,7 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "A personal savings wallet for Smart Money, coins, goals, streaks, and daily rewards." },
       { name: "author", content: "Smart Saver" },
       { name: "monetag", content: "2de48f0f2a5fabe6fd8142b95d77353d" },
-      { name: "theme-color", content: "#c5a059" },
+      { name: "theme-color", content: "#0B101B" },
       { property: "og:title", content: "Smart Saver" },
       { property: "og:description", content: "Save toward goals, manage Smart Money, and collect daily rewards with Smart Saver." },
       { property: "og:type", content: "website" },

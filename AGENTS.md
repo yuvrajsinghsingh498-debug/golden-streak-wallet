@@ -16,3 +16,5 @@
 - Render site verification tags through the root route head because TanStack Start has no index.html entry.
 - Treat sponsored placements as placeholders until a provider zone/script is supplied; verification metadata alone must not be represented as live ads.
 - Keep the rewarded-ad cooldown synchronized between the database function and Earn screen; skipped ads must not invoke reward crediting.
+- Keep Home in the document scroll flow with bottom-navigation clearance; recent activity reuses the authenticated wallet transaction read.
+- Generate launcher icons from the cropped transparent emblem and declare separate any/maskable entries for each resolution in the linked web manifest.

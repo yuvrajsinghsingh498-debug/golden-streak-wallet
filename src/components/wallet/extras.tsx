@@ -159,13 +159,13 @@ export function SavingsGoals({ isVip, balance, onChange, version }: { isVip: boo
 
   return <section className="mt-6">
     <div className="mb-3 flex items-center justify-between">
-      <h2 className="flex items-center gap-2 text-2xl font-extrabold"><Target className="size-7 text-primary"/>My Savings Goals</h2>
+      <h2 className="flex min-w-0 items-center gap-2 text-xl font-extrabold sm:text-2xl"><Target className="size-6 shrink-0 text-primary"/>My Savings Goals</h2>
       <span className="text-xs text-muted-foreground">{goals.length}/5</span>
     </div>
     <div className="space-y-3">
-      {goals.length === 0 && <div className="rounded-2xl border border-dashed border-primary/50 bg-card/60 p-5 text-center text-sm text-muted-foreground">Start saving for something you love. Fund goals from your Smart Money.</div>}
-      {goals.map((g) => { const pct = Math.min(100, (g.saved_amount / g.target_amount) * 100); return <div key={g.id} className="rounded-2xl border border-border bg-card/80 p-4">
-        <div className="flex items-center justify-between"><p className="font-bold">{g.title}</p><p className="text-sm font-bold text-primary">₹{money.format(g.saved_amount)} <span className="text-muted-foreground">/ ₹{money.format(g.target_amount)}</span></p></div>
+      {goals.length === 0 && <div className="rounded-lg border border-dashed border-primary/50 bg-card/60 p-5 text-center text-sm text-muted-foreground">Start saving for something you love. Fund goals from your Smart Money.</div>}
+      {goals.map((g) => { const pct = Math.min(100, (g.saved_amount / g.target_amount) * 100); return <div key={g.id} className="rounded-lg border border-border bg-card/80 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-bold">{g.title}</p><p className="text-sm font-bold text-primary">₹{money.format(g.saved_amount)} <span className="text-muted-foreground">/ ₹{money.format(g.target_amount)}</span></p></div>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }}/></div>
         <div className="mt-3 grid grid-cols-2 gap-2"><Button size="sm" variant="wallet" onClick={() => { setFundId(g.id); setFundAmt(""); }}><Plus/>Add money</Button><Button size="sm" variant="outline" onClick={() => setBreakId(g.id)}>Break goal</Button></div>
       </div>; })}
