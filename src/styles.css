@@ -70,7 +70,7 @@
 
 :root {
   --radius: 0.5rem;
-  --background: oklch(0.095 0.029 258);
+  --background: oklch(0.17381938 0.02436171 265.198946);
   --foreground: oklch(0.98 0.008 250);
   --card: oklch(0.145 0.034 257);
   --card-foreground: oklch(0.98 0.008 250);
@@ -95,7 +95,7 @@
   --wallet-green: oklch(0.68 0.18 166);
   --gold-soft: oklch(0.91 0.083 84);
   --gold-deep: oklch(0.61 0.078 81);
-  --navy-deep: oklch(0.095 0.029 258);
+  --navy-deep: oklch(0.17381938 0.02436171 265.198946);
   --shadow-gold: 0 10px 30px color-mix(in oklab, var(--primary) 22%, transparent);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -113,7 +113,7 @@
 }
 
 .dark {
-  --background: oklch(0.129 0.042 264.695);
+  --background: oklch(0.17381938 0.02436171 265.198946);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);
   --card-foreground: oklch(0.984 0.003 247.858);
@@ -148,6 +148,11 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    background-color: var(--background);
+    scroll-padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
   * {
     border-color: var(--color-border);
   }
@@ -165,9 +170,7 @@
 }
 
 @utility wallet-shell {
-  background:
-    radial-gradient(circle at 50% -16%, color-mix(in oklab, var(--primary) 10%, transparent), transparent 35%),
-    linear-gradient(180deg, color-mix(in oklab, var(--background) 93%, var(--secondary)), var(--background));
+  background: var(--background);
 }
 
 @utility money-card {
@@ -204,6 +207,7 @@
 .spin-pointer-glow { animation: pointer-pulse 1.8s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
   .spin-confetti, .coin-flight, .spin-pointer-glow { animation: none; }
   .coin-flight { display: none; }
 }
