@@ -165,10 +165,10 @@ function SmartWalletPage() {
   const onVipClick = () => { if (wallet.is_vip) toast.info("You're a VIP member"); else setVipOpen(true); };
 
   return (
-    <main className={`wallet-shell w-full pb-24 ${["earn", "history"].includes(activeTab) ? "pb-[calc(8rem+env(safe-area-inset-bottom))]" : "pb-[calc(6rem+env(safe-area-inset-bottom))]"}`}>
+    <main className={`wallet-shell mx-auto w-full max-w-md px-4 pb-28 ${["earn", "history"].includes(activeTab) ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : "pb-[calc(7rem+env(safe-area-inset-bottom))]"}`}>
       <div className="mx-auto w-full px-4">
         <header className="flex min-h-16 flex-wrap items-center justify-between gap-2 py-3">
-          <h1 className="flex min-w-0 items-center gap-2 font-display text-xl font-bold text-gold-soft sm:text-3xl"><img src="/brand-emblem-transparent.png" alt="" className="size-9 shrink-0 object-contain sm:size-12"/>Smart Saver</h1>
+          <h1 className="flex min-w-0 items-center gap-2 font-display text-xl font-bold text-gold-soft"><img src="/brand-emblem-transparent.png" alt="" className="h-9 w-9 shrink-0 bg-transparent object-contain"/>Smart Saver</h1>
           <div className="flex items-center gap-2">
             <div id="header-coin-balance" className="hidden items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary sm:flex"><Coins className="size-4"/>{wallet.coins.toLocaleString("en-IN")}</div>
             <VipBadge isVip={wallet.is_vip} onClick={onVipClick}/>
@@ -180,13 +180,13 @@ function SmartWalletPage() {
         </header>
 
         {activeTab === "home" && <>
-          <section className="money-card relative mt-3 rounded-lg border border-primary/50 p-4 sm:p-5 shadow-[var(--shadow-gold)]">
+          <section className="money-card relative mt-3 rounded-lg border border-primary/50 p-5 shadow-[var(--shadow-gold)]">
             <WalletCards className="pointer-events-none absolute right-3 top-7 size-28 text-foreground/10" strokeWidth={1.5}/>
             <div className="relative"><div className="flex items-center gap-1"><h2 className="text-xl font-extrabold">SMART MONEY</h2><Button variant="ghost" size="icon" className="size-7 shrink-0 text-primary" aria-label="Smart Money value information" onClick={() => setMoneyInfoOpen(true)}><HelpCircle className="size-4"/></Button></div><p className="text-sm text-foreground/75">Withdrawable Balance</p></div>
-            <div className="relative mt-5 text-4xl font-extrabold">₹ {money.format(wallet.balance)}</div>
+            <div className="relative mt-5 text-3xl font-extrabold">₹ {money.format(wallet.balance)}</div>
             <div className="relative mt-6 grid grid-cols-1 gap-2 min-[480px]:grid-cols-[minmax(0,0.85fr)_minmax(0,1.35fr)]">
-              <Button variant="walletOutline" size="wallet" onClick={() => setWithdrawOpen(true)}><Landmark/>Withdraw<ChevronRight/></Button>
-              <Button variant="wallet" size="wallet" onClick={() => setAddOpen(true)}>Add Smart Money &gt;</Button>
+              <Button variant="walletOutline" size="wallet" className="py-3.5 text-base" onClick={() => setWithdrawOpen(true)}><Landmark/>Withdraw<ChevronRight/></Button>
+              <Button variant="wallet" size="wallet" className="py-3.5 text-base" onClick={() => setAddOpen(true)}>Add Smart Money &gt;</Button>
             </div>
           </section>
 
@@ -214,7 +214,7 @@ function SmartWalletPage() {
         {activeTab === "account" && <AccountTab data={walletData} isAdmin={isAdmin} onVip={onVipClick} onSignOut={async () => { await supabase.auth.signOut(); setActiveTab("home"); }}/>}
       </div>
 
-      {["earn", "history"].includes(activeTab) && <aside aria-label="Sponsored Ad" className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex h-12 w-full items-center justify-center border-t border-border bg-background px-4 text-xs text-muted-foreground">Sponsored Ad</aside>}
+      {["earn", "history"].includes(activeTab) && <aside aria-label="Sponsored Ad" className="fixed inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-40 flex h-12 w-full items-center justify-center border-t border-border bg-background px-4 text-xs text-muted-foreground">Sponsored Ad</aside>}
       <BottomNav active={activeTab} setActive={setActiveTab}/>
 
       <Sheet open={notifOpen} onOpenChange={openNotifications}>
@@ -472,4 +472,4 @@ function AccountTab({ data, isAdmin, onVip, onSignOut }: { data: WalletData; isA
 }
 function LoadingScreen() { return <main className="wallet-shell grid min-h-screen place-items-center"><LoaderCircle className="size-10 animate-spin text-primary"/></main>; }
 
-function BottomNav({ active, setActive }: { active: Tab; setActive: (tab: Tab) => void }) { const items = useMemo(() => [{id:"home" as const,label:"Home",icon:Home},{id:"earn" as const,label:"Earn",icon:BadgeIndianRupee},{id:"spin" as const,label:"Daily Spin",icon:Gift},{id:"history" as const,label:"History",icon:History},{id:"account" as const,label:"Account",icon:UserRound}], []); return <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto flex h-[calc(4rem+env(safe-area-inset-bottom))] w-full items-center justify-around border-t border-border bg-card/95 px-4 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">{items.map(({id,label,icon:Icon}) => <Button variant="ghost" key={id} aria-current={active === id ? "page" : undefined} onClick={() => setActive(id)} className={`flex h-full min-w-14 flex-col items-center justify-center gap-1 border-b-2 text-[11px] font-semibold transition-colors ${active === id ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}><Icon className={`size-6 ${active === id ? "fill-current" : ""}`}/>{label}</Button>)}</nav>; }
+function BottomNav({ active, setActive }: { active: Tab; setActive: (tab: Tab) => void }) { const items = useMemo(() => [{id:"home" as const,label:"Home",icon:Home},{id:"earn" as const,label:"Earn",icon:BadgeIndianRupee},{id:"spin" as const,label:"Daily Spin",icon:Gift},{id:"history" as const,label:"History",icon:History},{id:"account" as const,label:"Account",icon:UserRound}], []); return <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto flex h-[calc(68px+env(safe-area-inset-bottom))] w-full max-w-md items-stretch justify-between border-t border-border bg-card/95 px-4 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">{items.map(({id,label,icon:Icon}) => <Button variant="ghost" key={id} aria-current={active === id ? "page" : undefined} onClick={() => setActive(id)} className={`flex h-[68px] min-w-0 flex-1 flex-col items-center justify-center gap-1 border-b-2 px-0 text-xs font-medium transition-colors ${active === id ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}><Icon className={`!h-6 !w-6 ${active === id ? "fill-current" : ""}`}/>{label}</Button>)}</nav>; }
