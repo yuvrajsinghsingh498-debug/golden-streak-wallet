@@ -72,8 +72,17 @@ function SmartWalletPage() {
       window.sessionStorage.setItem(`welcome-${result.user.id}`, "shown");
       setWelcomeOpen(true);
     }
+    if (typeof window !== "undefined") {
+      const streakKey = `streak-toast-${result.user.id}-${new Date().toISOString().slice(0, 10)}`;
+      if (!window.localStorage.getItem(streakKey)) {
+        window.localStorage.setItem(streakKey, "1");
+        const days = result.wallet.current_streak;
+        toast.success(days > 1 ? `🔥 ${days}-day streak!` : "Daily streak started", { description: days > 1 ? "You checked in again today — keep it going." : "Come back tomorrow to grow your streak." });
+      }
+    }
     const pending = result.wallet.pending_milestone;
     if (pending === 100 || pending === 200 || pending === 500) setRewardMilestone(pending);
+    return result;
   };
 
   useEffect(() => {
@@ -89,11 +98,37 @@ function SmartWalletPage() {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       setSignedIn(Boolean(session));
       router.invalidate();
-      if (session) { refresh().catch(() => toast.error("Could not load your wallet")); verifyAdmin().then(r => setIsAdmin(r.isAdmin)).catch(() => undefined); }
+      if (session) {
+        if (event === "SIGNED_IN" && typeof window !== "undefined" && !window.sessionStorage.getItem(`login-toast-${session.user.id}`)) {
+          window.sessionStorage.setItem(`login-toast-${session.user.id}`, "1");
+          toast.success("Signed in", { description: "Welcome to Smart Saver." });
+        }
+        refresh().catch(() => toast.error("Could not load your wallet")); verifyAdmin().then(r => setIsAdmin(r.isAdmin)).catch(() => undefined);
+      }
       else { setWalletData(null); setIsAdmin(false); }
     });
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
+
+  const liveUserId = walletData?.user.id;
+  useEffect(() => {
+    if (!liveUserId) return;
+    let timer: number | undefined;
+    let lastSyncToast = 0;
+    const onChange = (notify: boolean) => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        refresh().then(() => {
+          if (notify && Date.now() - lastSyncToast > 30000) { lastSyncToast = Date.now(); toast.info("Wallet synced", { description: "Your balance was updated." }); }
+        }).catch(() => undefined);
+      }, 700);
+    };
+    const channel = supabase.channel(`wallet-live-${liveUserId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `id=eq.${liveUserId}` }, () => onChange(true))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${liveUserId}` }, () => onChange(false))
+      .subscribe();
+    return () => { window.clearTimeout(timer); supabase.removeChannel(channel); };
+  }, [liveUserId]);
 
   if (!sessionReady) return <LoadingScreen />;
   if (!signedIn) return <AuthScreen />;
