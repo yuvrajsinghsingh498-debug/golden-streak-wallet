@@ -82,7 +82,6 @@ function SmartWalletPage() {
     }
     const pending = result.wallet.pending_milestone;
     if (pending === 100 || pending === 200 || pending === 500) setRewardMilestone(pending);
-    return result;
   };
 
   useEffect(() => {
