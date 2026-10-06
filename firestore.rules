@@ -1,0 +1,36 @@
+rules_version = '2';
+// Paste into Firebase Console > Firestore > Rules.
+// Note: members can still change their own wallet fields from the app; for fully
+// tamper-proof balances move crediting into Firebase Cloud Functions.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.email == "yuvrajsinghsingh498@gmail.com"; }
+    function isMe(uid) { return signedIn() && request.auth.uid == uid; }
+
+    match /User/{uid} {
+      allow read: if isMe(uid) || isAdmin() || signedIn(); // referral code lookup
+      allow create: if isMe(uid) && request.resource.data.coins == 0 && request.resource.data.withdrawableBalance == 0 && request.resource.data.isVIP == false;
+      allow update: if isAdmin() || (isMe(uid) && request.resource.data.isVIP == resource.data.isVIP)
+        || (signedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coins', 'totalCoinsEarned']));
+      match /{sub}/{id} {
+        allow read: if isMe(uid) || isAdmin();
+        allow write: if signedIn();
+      }
+    }
+    match /deposits/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.user_id == request.auth.uid) || signedIn();
+      allow create: if signedIn() && request.resource.data.user_id == request.auth.uid && request.resource.data.status == "pending";
+      allow update, delete: if isAdmin();
+    }
+    match /withdrawals/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.user_id == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.user_id == request.auth.uid && request.resource.data.status == "pending";
+      allow update, delete: if isAdmin();
+    }
+    match /support_tickets/{id} {
+      allow create: if signedIn() && request.resource.data.user_id == request.auth.uid;
+      allow read, update: if isAdmin();
+    }
+  }
+}
