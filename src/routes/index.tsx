@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEven
 import confetti from "canvas-confetti";
 import {
   Bell, Crown, WalletCards, Landmark, Plus, ChevronRight, Flame, PlaySquare, ShieldCheck, Volume2,
-  ReceiptText, Home, BadgeIndianRupee, History, UserRound, Gift, Coins, Users,
+  ReceiptText, Home, BadgeIndianRupee, History, UserRound, Gift, Coins, Users, Target, Building2, CreditCard, ShoppingBag,
   LogOut, LoaderCircle, Trophy, Copy, HelpCircle, Zap, Sparkles, ArrowDownLeft, ArrowUpRight,
 } from "lucide-react";
 import { toast } from "@/components/ui/app-toast";
@@ -166,9 +166,9 @@ function SmartWalletPage() {
 
   return (
     <main className={`wallet-shell mx-auto w-full max-w-md px-4 pb-28 ${["earn", "history"].includes(activeTab) ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : "pb-[calc(7rem+env(safe-area-inset-bottom))]"}`}>
-      <div className="mx-auto w-full px-4">
-        <header className="flex min-h-16 flex-wrap items-center justify-between gap-2 py-3">
-          <h1 className="flex min-w-0 items-center gap-2 font-display text-xl font-bold text-gold-soft"><img src="/brand-emblem-transparent.png" alt="" className="h-9 w-9 shrink-0 bg-transparent object-contain"/>Smart Saver</h1>
+      <div className="mx-auto w-full">
+        <header className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-primary/50 py-3 shadow-[0_1px_10px_color-mix(in_oklab,var(--primary)_15%,transparent)] sm:flex sm:justify-between">
+          <div className="flex min-w-0 items-center gap-2"><img src="/brand-emblem-transparent.png" alt="" className="h-9 w-9 shrink-0 bg-transparent object-contain"/><div className="min-w-0"><h1 className="truncate font-display text-xl font-bold italic text-gold-soft">Smart Wallet</h1><p className="truncate text-xs text-muted-foreground">Welcome back, {walletData.user.email.split("@")[0] || "Saver"}</p></div></div>
           <div className="flex items-center gap-2">
             <div id="header-coin-balance" className="hidden items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary sm:flex"><Coins className="size-4"/>{wallet.coins.toLocaleString("en-IN")}</div>
             <VipBadge isVip={wallet.is_vip} onClick={onVipClick}/>
@@ -180,32 +180,38 @@ function SmartWalletPage() {
         </header>
 
         {activeTab === "home" && <>
-          <section className="money-card relative mt-3 rounded-lg border border-primary/50 p-5 shadow-[var(--shadow-gold)]">
+          <section className="money-card relative mt-3 rounded-lg border border-primary/50 p-4 shadow-[var(--shadow-gold)]">
             <WalletCards className="pointer-events-none absolute right-3 top-7 size-28 text-foreground/10" strokeWidth={1.5}/>
             <div className="relative"><div className="flex items-center gap-1"><h2 className="text-xl font-extrabold">SMART MONEY</h2><Button variant="ghost" size="icon" className="size-7 shrink-0 text-primary" aria-label="Smart Money value information" onClick={() => setMoneyInfoOpen(true)}><HelpCircle className="size-4"/></Button></div><p className="text-sm text-foreground/75">Withdrawable Balance</p></div>
             <div className="relative mt-5 text-3xl font-extrabold">₹ {money.format(wallet.balance)}</div>
-            <div className="relative mt-6 grid grid-cols-1 gap-2 min-[480px]:grid-cols-[minmax(0,0.85fr)_minmax(0,1.35fr)]">
-              <Button variant="walletOutline" size="wallet" className="py-3.5 text-base" onClick={() => setWithdrawOpen(true)}><Landmark/>Withdraw<ChevronRight/></Button>
-              <Button variant="wallet" size="wallet" className="py-3.5 text-base" onClick={() => setAddOpen(true)}>Add Smart Money &gt;</Button>
+            <p className="relative mt-1 text-sm font-semibold text-primary"><Coins className="mr-1 inline size-4"/>{wallet.coins.toLocaleString("en-IN")} Smart Coins</p>
+            <div className="relative mt-5 grid grid-cols-2 gap-2">
+              <Button variant="walletOutline" size="wallet" className="min-w-0 gap-1 px-2 py-3 text-sm sm:text-base" onClick={() => setWithdrawOpen(true)}><Landmark className="size-4 shrink-0"/>Withdraw</Button>
+              <Button variant="wallet" size="wallet" className="min-w-0 gap-1 px-2 py-3 text-sm sm:text-base" onClick={() => setAddOpen(true)}><Plus className="size-4 shrink-0"/>Add Money</Button>
             </div>
           </section>
 
-          <section className="mt-5 rounded-lg border border-border bg-card/80 p-4">
-            <div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase text-primary">Daily Streak Reward</p><h2 className="mt-1 flex items-center gap-2 text-xl font-extrabold"><Flame className="size-6 fill-current text-primary"/>{wallet.current_streak} Days Active</h2></div><div className="text-right"><p className="text-xs text-muted-foreground">Coin balance</p><p className="font-bold text-primary"><Coins className="mr-1 inline size-4"/>{wallet.coins.toLocaleString("en-IN")}</p></div></div>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, wallet.current_streak / 5)}%` }}/></div>
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              {([100,200,500] as const).map((day) => <div key={day} className={`rounded-lg border p-2 text-center ${wallet.current_streak >= day ? "border-primary bg-primary/10" : "border-border bg-muted/40"}`}><Trophy className="mx-auto mb-1 size-4 text-primary"/><p className="text-xs font-bold">{day} Streak</p><p className="mt-0.5 text-[11px] text-primary">+{rewards[day].toLocaleString("en-IN")} Coins</p></div>)}
-            </div>
+          <section id="daily-streak" className="mt-4 rounded-lg border border-border bg-card/80 p-4">
+            <div className="flex items-center justify-between gap-2"><div><p className="text-xs font-bold uppercase text-primary">Daily Streak</p><h2 className="mt-1 flex items-center gap-2 text-xl font-extrabold"><Flame className="size-6 fill-current text-primary"/>{wallet.current_streak} consecutive {wallet.current_streak === 1 ? "day" : "days"}</h2></div><Button variant="ghost" size="sm" className="shrink-0 text-primary" onClick={() => document.getElementById("daily-streak")?.scrollIntoView({ behavior: "smooth", block: "center" })}>View Streak</Button></div>
+            <div className="mt-4 grid grid-cols-7 gap-2" aria-label={`${Math.min(7, wallet.current_streak)} of 7 day streak progress`}>{Array.from({ length: 7 }, (_, i) => <div key={i} className={`h-2 rounded-full ${i < Math.min(7, wallet.current_streak) ? "bg-primary shadow-[0_0_8px_var(--primary)]" : "bg-muted"}`}/>)}</div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs"><span className="text-muted-foreground">{wallet.current_streak % 7 || 7} / 7 days this week</span><span className="font-semibold text-primary">Next: {wallet.current_streak < 100 ? `${100 - wallet.current_streak} days to +1,000 coins` : wallet.current_streak < 200 ? `${200 - wallet.current_streak} days to +2,020 coins` : wallet.current_streak < 500 ? `${500 - wallet.current_streak} days to +6,000 coins` : "All milestones reached"}</span></div>
           </section>
+
+          <section className="mt-4" aria-label="Quick Earn"><h2 className="mb-3 text-lg font-extrabold">Quick Earn</h2><div className="grid grid-cols-2 gap-3">{[
+            { label: "Watch Ads", icon: PlaySquare, tab: "earn" as Tab }, { label: "Spin & Win", icon: Gift, tab: "spin" as Tab },
+            { label: "Refer & Earn", icon: Users, tab: "spin" as Tab }, { label: "Missions", icon: Target, tab: "earn" as Tab },
+          ].map(({ label, icon: Icon, tab }) => <Button key={label} variant="outline" className="h-[72px] justify-start gap-3 border-primary/30 bg-card/80 px-3 text-left hover:border-primary hover:bg-primary/10" onClick={() => setActiveTab(tab)}><span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Icon className="size-5"/></span><span className="min-w-0 truncate text-sm font-bold">{label}</span><ChevronRight className="ml-auto size-4 shrink-0 text-primary"/></Button>)}</div></section>
+
+          <section className="mt-4" aria-label="Special Offers"><div className="flex items-center justify-between gap-2"><h2 className="text-lg font-extrabold">Special Offers</h2><span className="text-[10px] text-muted-foreground">Affiliate disclosure</span></div><div className="mt-2 grid grid-cols-2 gap-2">{[
+            { label: "Demat Account", icon: Building2 }, { label: "Bank Account", icon: Landmark }, { label: "Credit Card", icon: CreditCard }, { label: "Shopping Deals", icon: ShoppingBag },
+          ].map(({ label, icon: Icon }) => <div key={label} className="flex min-h-16 items-center gap-2 rounded-lg border border-border/70 bg-card/40 p-3 text-sm text-muted-foreground"><Icon className="size-4 shrink-0 text-primary/70"/><span className="min-w-0 truncate">{label}</span><span className="ml-auto shrink-0 text-[10px]">No active offers</span></div>)}</div><p className="mt-2 text-[10px] text-muted-foreground">We may earn a commission from eligible partner offers. No active approved campaigns are available.</p></section>
 
           <SavingsGoals isVip={wallet.is_vip} balance={Number(wallet.balance)} version={goalVersion} onChange={async () => { await refresh(); setGoalVersion(v => v + 1); }}/>
 
-
           <section className="mt-6" aria-label="Wallet Overview / Recent Activity">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-xl font-extrabold sm:text-2xl">Wallet Overview</h2><p className="mt-1 text-xs text-muted-foreground">Recent Activity</p></div><Button variant="ghost" className="px-0 text-primary" onClick={() => setActiveTab("history")}>View All &gt;</Button></div>
-            {walletData.transactions.length === 0 ? <p className="py-4 text-sm text-muted-foreground">Your transactions will appear here.</p> : <div className="divide-y divide-border">{walletData.transactions.slice(0, 5).map((item) => <div key={item.id} className="flex items-center gap-3 py-3"><span className={`grid size-9 shrink-0 place-items-center rounded-full ${item.amount < 0 ? "bg-destructive/15 text-destructive" : "bg-primary/10 text-primary"}`}>{item.amount < 0 ? <ArrowUpRight className="size-4"/> : <ArrowDownLeft className="size-4"/>}</span><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{item.description}</p><p className="mt-1 text-[11px] text-muted-foreground">{formatTime(item.created_at)}</p></div><div className="shrink-0 text-right text-sm font-bold">{item.amount !== 0 && <p className={item.amount < 0 ? "text-destructive" : "text-primary"}>{item.amount < 0 ? "−" : "+"}₹{money.format(Math.abs(item.amount))}</p>}{item.coins !== 0 && <p className="text-primary">{item.coins > 0 ? "+" : ""}{item.coins.toLocaleString("en-IN")} coins</p>}</div></div>)}</div>}
+            {walletData.transactions.length === 0 ? <p className="py-4 text-sm text-muted-foreground">Your transactions will appear here.</p> : <div className="divide-y divide-border">{walletData.transactions.slice(0, 3).map((item) => <div key={item.id} className="flex items-center gap-3 py-3"><span className={`grid size-9 shrink-0 place-items-center rounded-full ${item.amount < 0 ? "bg-destructive/15 text-destructive" : "bg-primary/10 text-primary"}`}>{item.amount < 0 ? <ArrowUpRight className="size-4"/> : <ArrowDownLeft className="size-4"/>}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.description}</p><p className="mt-1 text-[11px] text-muted-foreground">{formatTime(item.created_at)}</p></div><div className="shrink-0 text-right text-sm font-bold">{item.amount !== 0 && <p className={item.amount < 0 ? "text-destructive" : "text-primary"}>{item.amount < 0 ? "−" : "+"}₹{money.format(Math.abs(item.amount))}</p>}{item.coins !== 0 && <p className="text-primary">{item.coins > 0 ? "+" : ""}{item.coins.toLocaleString("en-IN")} coins</p>}<p className={`text-[10px] ${item.amount < 0 || item.coins < 0 ? "text-destructive" : "text-primary"}`}>{item.amount < 0 || item.coins < 0 ? "Debit" : "Credit"}</p></div></div>)}</div>}
           </section>
-          <section className="mt-6 rounded-lg border border-primary/40 bg-card p-4" aria-label="Referral promotion"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary"><Users className="size-5"/></span><div><h2 className="font-display text-xl font-bold text-gold-soft">Refer friends &amp; earn bonus coins</h2><p className="mt-2 text-sm text-muted-foreground">Earn 1,000 coins when a friend joins with your code.</p></div></div><Button variant="walletOutline" className="mt-4 w-full" onClick={() => setActiveTab("spin")}>Refer &amp; Earn<ChevronRight/></Button></section>
         </>}
 
         {activeTab === "earn" && <EarnTab data={walletData} refresh={refresh} onRedeem={() => setRedeemOpen(true)}/>}
