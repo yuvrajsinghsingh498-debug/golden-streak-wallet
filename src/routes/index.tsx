@@ -199,7 +199,7 @@ function SmartWalletPage() {
 
           <section className="mt-4" aria-label="Quick Earn"><h2 className="mb-3 text-lg font-extrabold">Quick Earn</h2><div className="grid grid-cols-2 gap-3">{[
             { label: "Watch Ads", icon: PlaySquare, tab: "earn" as Tab }, { label: "Spin & Win", icon: Gift, tab: "spin" as Tab },
-            { label: "Refer & Earn", icon: Users, tab: "spin" as Tab }, { label: "Missions", icon: Target, tab: "earn" as Tab },
+            { label: "Refer & Earn", icon: Users, tab: "referral" as Tab }, { label: "Missions", icon: Target, tab: "missions" as Tab },
           ].map(({ label, icon: Icon, tab }) => <Button key={label} variant="outline" className="h-[72px] justify-start gap-3 border-primary/30 bg-card/80 px-3 text-left hover:border-primary hover:bg-primary/10" onClick={() => setActiveTab(tab)}><span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Icon className="size-5"/></span><span className="min-w-0 truncate text-sm font-bold">{label}</span><ChevronRight className="ml-auto size-4 shrink-0 text-primary"/></Button>)}</div></section>
 
           <section className="mt-4" aria-label="Special Offers"><div className="flex items-center justify-between gap-2"><h2 className="text-lg font-extrabold">Special Offers</h2><span className="text-[10px] text-muted-foreground">Affiliate disclosure</span></div><div className="mt-2 grid grid-cols-2 gap-2">{[
