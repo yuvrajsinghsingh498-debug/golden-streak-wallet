@@ -44,7 +44,7 @@ export const loadWallet = createServerFn({ method: "GET" })
     return {
       wallet: { ...row, balance: row.smart_money, coins: row.smart_coins, current_streak: row.streak, pending_milestone: pendingMilestone },
       spin,
-      user: { id: context.userId, email },
+      user: { id: context.userId, email, name: row.full_name ?? (context.claims as { name?: string }).name ?? "" },
       transactions: transactions ?? [],
       notifications: notifications ?? [],
     };
