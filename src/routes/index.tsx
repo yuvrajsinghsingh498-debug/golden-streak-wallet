@@ -23,7 +23,7 @@ import {
 } from "@/lib/wallet.functions";
 
 type WalletData = Awaited<ReturnType<typeof loadWallet>>;
-type Tab = "home" | "earn" | "spin" | "history" | "account" | "referral" | "missions";
+type Tab = "home" | "earn" | "spin" | "history" | "account" | "referral" | "missions" | "offers";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
@@ -53,6 +53,7 @@ function SmartWalletPage() {
   const [signedIn, setSignedIn] = useState(false);
   const [walletData, setWalletData] = useState<WalletData | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("home");
+  const [selectedOffer, setSelectedOffer] = useState("Demat Account");
   const [addOpen, setAddOpen] = useState(false);
   const [vipOpen, setVipOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
@@ -165,10 +166,10 @@ function SmartWalletPage() {
   const onVipClick = () => { if (wallet.is_vip) toast.info("You're a VIP member"); else setVipOpen(true); };
 
   return (
-    <main className={`wallet-shell mx-auto w-full max-w-md px-4 pb-28 ${["earn", "history"].includes(activeTab) ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : "pb-[calc(7rem+env(safe-area-inset-bottom))]"}`}>
+    <main className={`wallet-shell mx-auto w-full max-w-[480px] px-4 pb-28 ${["earn", "history"].includes(activeTab) ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : "pb-[calc(7rem+env(safe-area-inset-bottom))]"}`}>
       <div className="mx-auto w-full">
         <header className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-primary/50 py-3 shadow-[0_1px_10px_color-mix(in_oklab,var(--primary)_15%,transparent)] sm:flex sm:justify-between">
-          <div className="flex min-w-0 items-center gap-2"><img src="/brand-emblem-transparent.png" alt="" className="h-9 w-9 shrink-0 bg-transparent object-contain"/><div className="min-w-0"><h1 className="truncate font-display text-xl font-bold italic text-gold-soft">Smart Wallet</h1><p className="truncate text-xs text-muted-foreground">Welcome back, {walletData.user.name || walletData.user.email.split("@")[0] || "Saver"}</p></div></div>
+          <div className="flex min-w-0 items-center gap-2"><img src="/brand-emblem-transparent.png" alt="" className="h-9 w-9 shrink-0 bg-transparent object-contain"/><div className="min-w-0"><h1 className="truncate font-display text-xl font-bold italic text-gold-soft">Smart Wallet</h1><p className="truncate text-xs text-muted-foreground">Welcome back, {wallet.full_name?.trim() || walletData.user.email.split("@")[0] || "Saver"}</p></div></div>
           <div className="flex items-center gap-2">
             <div id="header-coin-balance" className="hidden items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary sm:flex"><Coins className="size-4"/>{wallet.coins.toLocaleString("en-IN")}</div>
             <VipBadge isVip={wallet.is_vip} onClick={onVipClick}/>
@@ -204,7 +205,7 @@ function SmartWalletPage() {
 
           <section className="mt-4" aria-label="Special Offers"><div className="flex items-center justify-between gap-2"><h2 className="text-lg font-extrabold">Special Offers</h2><span className="text-[10px] text-muted-foreground">Affiliate disclosure</span></div><div className="mt-2 grid grid-cols-2 gap-2">{[
             { label: "Demat Account", icon: Building2 }, { label: "Bank Account", icon: Landmark }, { label: "Credit Card", icon: CreditCard }, { label: "Shopping Deals", icon: ShoppingBag },
-          ].map(({ label, icon: Icon }) => <div key={label} className="flex min-h-16 items-center gap-2 rounded-lg border border-border/70 bg-card/40 p-3 text-sm text-muted-foreground"><Icon className="size-4 shrink-0 text-primary/70"/><span className="min-w-0 truncate">{label}</span><span className="ml-auto shrink-0 text-[10px]">No active offers</span></div>)}</div><p className="mt-2 text-[10px] text-muted-foreground">We may earn a commission from eligible partner offers. No active approved campaigns are available.</p></section>
+          ].map(({ label, icon: Icon }) => <Button key={label} variant="outline" className="flex min-h-16 min-w-0 items-center justify-start gap-2 border-border/70 bg-card/40 p-3 text-left text-sm text-muted-foreground" onClick={() => { setSelectedOffer(label); setActiveTab("offers"); }}><Icon className="size-4 shrink-0 text-primary/70"/><span className="min-w-0 truncate">{label}</span><ChevronRight className="ml-auto size-4 shrink-0"/></Button>)}</div><p className="mt-2 text-[10px] text-muted-foreground">Affiliate disclosure: commissions may apply to eligible partner campaigns.</p></section>
 
           <section className="mt-6" aria-label="Wallet Overview / Recent Activity">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-xl font-extrabold sm:text-2xl">Wallet Overview</h2><p className="mt-1 text-xs text-muted-foreground">Recent Activity</p></div><Button variant="ghost" className="px-0 text-primary" onClick={() => setActiveTab("history")}>View All &gt;</Button></div>
@@ -215,13 +216,13 @@ function SmartWalletPage() {
 
         {activeTab === "earn" && <EarnTab data={walletData} refresh={refresh} onRedeem={() => setRedeemOpen(true)}/>}
         {activeTab === "spin" && <SpinTab data={walletData} refresh={refresh} onVip={() => setVipOpen(true)}/>} 
-        {activeTab === "referral" && <section id="referral-page" className="pt-6"><ReferSection code={wallet.referral_code} referredBy={wallet.referred_by} onDone={refresh}/></section>}
-        {activeTab === "missions" && <MissionsTab data={walletData} setActiveTab={setActiveTab}/>}
+        {activeTab === "referral" && <section className="pt-6"><Button variant="ghost" className="px-0 text-primary" onClick={() => setActiveTab("home")}><ChevronRight className="rotate-180"/>Home</Button><ReferSection code={wallet.referral_code} referredBy={wallet.referred_by} onDone={refresh}/></section>}
+        {activeTab === "missions" && <MissionsTab setActiveTab={setActiveTab}/>}
+        {activeTab === "offers" && <section className="pt-6"><Button variant="ghost" className="px-0 text-primary" onClick={() => setActiveTab("home")}><ChevronRight className="rotate-180"/>Home</Button><h2 className="mt-3 text-xl font-extrabold">{selectedOffer}</h2><p className="mt-2 rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">There are no active, approved affiliate campaigns in this category right now. Please check back later.</p><p className="mt-2 text-xs text-muted-foreground">Affiliate disclosure: eligible partner campaigns may earn Smart Saver a commission.</p></section>}
         {activeTab === "history" && <Transactions data={walletData.transactions}/>}
         {activeTab === "account" && <AccountTab data={walletData} isAdmin={isAdmin} onVip={onVipClick} onSignOut={async () => { await supabase.auth.signOut(); setActiveTab("home"); }}/>}
       </div>
 
-      {["earn", "history"].includes(activeTab) && <aside aria-label="Sponsored Ad" className="fixed inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-40 flex h-12 w-full items-center justify-center border-t border-border bg-background px-4 text-xs text-muted-foreground">Sponsored Ad</aside>}
       <BottomNav active={activeTab} setActive={setActiveTab}/>
 
       <Sheet open={notifOpen} onOpenChange={openNotifications}>
