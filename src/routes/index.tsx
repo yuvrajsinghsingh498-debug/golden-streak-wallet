@@ -60,6 +60,7 @@ function SmartWalletPage() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [moneyInfoOpen, setMoneyInfoOpen] = useState(false);
+  const [streakDetailsOpen, setStreakDetailsOpen] = useState(false);
   const [goalVersion, setGoalVersion] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
@@ -193,8 +194,8 @@ function SmartWalletPage() {
           </section>
 
           <section id="daily-streak" className="mt-4 rounded-lg border border-border bg-card/80 p-4">
-            <div className="flex items-center justify-between gap-2"><div><p className="text-xs font-bold uppercase text-primary">Daily Streak</p><h2 className="mt-1 flex items-center gap-2 text-xl font-extrabold"><Flame className="size-6 fill-current text-primary"/>{wallet.current_streak} consecutive {wallet.current_streak === 1 ? "day" : "days"}</h2></div><Button variant="ghost" size="sm" className="shrink-0 text-primary" onClick={() => document.getElementById("daily-streak")?.scrollIntoView({ behavior: "smooth", block: "center" })}>View Streak</Button></div>
-            <div className="mt-4 grid grid-cols-7 gap-2" aria-label={`${Math.min(7, wallet.current_streak)} of 7 day streak progress`}>{Array.from({ length: 7 }, (_, i) => <div key={i} className={`h-2 rounded-full ${i < Math.min(7, wallet.current_streak) ? "bg-primary shadow-[0_0_8px_var(--primary)]" : "bg-muted"}`}/>)}</div>
+            <div className="flex items-center justify-between gap-2"><div><p className="text-xs font-bold uppercase text-primary">Daily Streak</p><h2 className="mt-1 flex items-center gap-2 text-xl font-extrabold"><Flame className="size-6 fill-current text-primary"/>{wallet.current_streak} consecutive {wallet.current_streak === 1 ? "day" : "days"}</h2></div><Button variant="ghost" size="sm" className="shrink-0 text-primary" onClick={() => setStreakDetailsOpen(true)}>View Streak</Button></div>
+            <div className="mt-4 grid grid-cols-7 gap-2" aria-label={`${wallet.current_streak % 7 || 7} of 7 day streak progress`}>{Array.from({ length: 7 }, (_, i) => <div key={i} className={`h-2 rounded-full ${i < (wallet.current_streak % 7 || 7) ? "bg-primary shadow-[0_0_8px_var(--primary)]" : "bg-muted"}`}/>)}</div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs"><span className="text-muted-foreground">{wallet.current_streak % 7 || 7} / 7 days this week</span><span className="font-semibold text-primary">Next: {wallet.current_streak < 100 ? `${100 - wallet.current_streak} days to +1,000 coins` : wallet.current_streak < 200 ? `${200 - wallet.current_streak} days to +2,020 coins` : wallet.current_streak < 500 ? `${500 - wallet.current_streak} days to +6,000 coins` : "All milestones reached"}</span></div>
           </section>
 
@@ -236,6 +237,7 @@ function SmartWalletPage() {
       </Sheet>
 
       <Dialog open={moneyInfoOpen} onOpenChange={setMoneyInfoOpen}><DialogContent className="w-[calc(100%-2rem)] rounded-lg border-border bg-card"><DialogHeader><DialogTitle>About Smart Money</DialogTitle><DialogDescription>1 Smart Money = ₹1. Withdrawable balance for goals and UPI cashout.</DialogDescription></DialogHeader><Button variant="wallet" onClick={() => setMoneyInfoOpen(false)}>Got it</Button></DialogContent></Dialog>
+      <Dialog open={streakDetailsOpen} onOpenChange={setStreakDetailsOpen}><DialogContent className="w-[calc(100%-2rem)] rounded-lg border-border bg-card"><DialogHeader><DialogTitle className="flex items-center gap-2"><Flame className="size-5 text-primary"/>Your daily streak</DialogTitle><DialogDescription>{wallet.current_streak} consecutive days. Visit each day to keep your streak active and reach the next coin milestone.</DialogDescription></DialogHeader><div className="space-y-2">{([100, 200, 500] as const).map(day => <div key={day} className={`flex items-center justify-between rounded-md border p-3 ${wallet.current_streak >= day ? "border-primary/50 bg-primary/10" : "border-border bg-muted/30"}`}><span className="font-semibold">{day}-day milestone</span><span className="text-sm font-bold text-primary">+{rewards[day].toLocaleString("en-IN")} coins</span></div>)}</div><Button variant="wallet" onClick={() => setStreakDetailsOpen(false)}>Done</Button></DialogContent></Dialog>
       <DepositDialog open={addOpen} onOpenChange={setAddOpen} onDone={async () => { await refresh(); setGoalVersion(v => v + 1); }}/>
        <RedeemDialog open={redeemOpen} onOpenChange={setRedeemOpen} coins={wallet.coins} onDone={refresh}/>
       <WithdrawDialog open={withdrawOpen} onOpenChange={setWithdrawOpen} balance={Number(wallet.balance)} defaultUpi={wallet.default_upi} onDone={refresh}/>
