@@ -172,11 +172,11 @@ function SmartWalletPage() {
           <div className="flex min-w-0 items-center gap-2"><img src="/brand-emblem-transparent.png" alt="" className="h-9 w-9 shrink-0 bg-transparent object-contain"/><div className="min-w-0"><h1 className="truncate font-display text-xl font-bold italic text-gold-soft">Smart Wallet</h1><p className="truncate text-xs text-muted-foreground">Welcome back, {wallet.full_name?.trim() || walletData.user.email.split("@")[0] || "Saver"}</p></div></div>
           <div className="flex items-center gap-2">
             <div id="header-coin-balance" className="hidden items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary sm:flex"><Coins className="size-4"/>{wallet.coins.toLocaleString("en-IN")}</div>
-            <VipBadge isVip={wallet.is_vip} onClick={onVipClick}/>
             <Button variant="ghost" size="icon" aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`} className="relative text-primary" onClick={() => openNotifications(true)}>
               <Bell className="size-7 fill-current"/>
               {unread > 0 && <span className="absolute -right-2 -top-2 grid size-5 place-items-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">{unread > 9 ? "9+" : unread}</span>}
             </Button>
+            <VipBadge isVip={wallet.is_vip} onClick={onVipClick}/>
           </div>
         </header>
 
