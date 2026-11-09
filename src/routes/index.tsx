@@ -23,7 +23,7 @@ import {
 } from "@/lib/wallet.functions";
 
 type WalletData = Awaited<ReturnType<typeof loadWallet>>;
-type Tab = "home" | "earn" | "spin" | "history" | "account";
+type Tab = "home" | "earn" | "spin" | "history" | "account" | "referral" | "missions";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
@@ -168,7 +168,7 @@ function SmartWalletPage() {
     <main className={`wallet-shell mx-auto w-full max-w-md px-4 pb-28 ${["earn", "history"].includes(activeTab) ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : "pb-[calc(7rem+env(safe-area-inset-bottom))]"}`}>
       <div className="mx-auto w-full">
         <header className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-primary/50 py-3 shadow-[0_1px_10px_color-mix(in_oklab,var(--primary)_15%,transparent)] sm:flex sm:justify-between">
-          <div className="flex min-w-0 items-center gap-2"><img src="/brand-emblem-transparent.png" alt="" className="h-9 w-9 shrink-0 bg-transparent object-contain"/><div className="min-w-0"><h1 className="truncate font-display text-xl font-bold italic text-gold-soft">Smart Wallet</h1><p className="truncate text-xs text-muted-foreground">Welcome back, {walletData.user.email.split("@")[0] || "Saver"}</p></div></div>
+          <div className="flex min-w-0 items-center gap-2"><img src="/brand-emblem-transparent.png" alt="" className="h-9 w-9 shrink-0 bg-transparent object-contain"/><div className="min-w-0"><h1 className="truncate font-display text-xl font-bold italic text-gold-soft">Smart Wallet</h1><p className="truncate text-xs text-muted-foreground">Welcome back, {walletData.user.name || walletData.user.email.split("@")[0] || "Saver"}</p></div></div>
           <div className="flex items-center gap-2">
             <div id="header-coin-balance" className="hidden items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary sm:flex"><Coins className="size-4"/>{wallet.coins.toLocaleString("en-IN")}</div>
             <VipBadge isVip={wallet.is_vip} onClick={onVipClick}/>
@@ -206,16 +206,17 @@ function SmartWalletPage() {
             { label: "Demat Account", icon: Building2 }, { label: "Bank Account", icon: Landmark }, { label: "Credit Card", icon: CreditCard }, { label: "Shopping Deals", icon: ShoppingBag },
           ].map(({ label, icon: Icon }) => <div key={label} className="flex min-h-16 items-center gap-2 rounded-lg border border-border/70 bg-card/40 p-3 text-sm text-muted-foreground"><Icon className="size-4 shrink-0 text-primary/70"/><span className="min-w-0 truncate">{label}</span><span className="ml-auto shrink-0 text-[10px]">No active offers</span></div>)}</div><p className="mt-2 text-[10px] text-muted-foreground">We may earn a commission from eligible partner offers. No active approved campaigns are available.</p></section>
 
-          <SavingsGoals isVip={wallet.is_vip} balance={Number(wallet.balance)} version={goalVersion} onChange={async () => { await refresh(); setGoalVersion(v => v + 1); }}/>
-
           <section className="mt-6" aria-label="Wallet Overview / Recent Activity">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-xl font-extrabold sm:text-2xl">Wallet Overview</h2><p className="mt-1 text-xs text-muted-foreground">Recent Activity</p></div><Button variant="ghost" className="px-0 text-primary" onClick={() => setActiveTab("history")}>View All &gt;</Button></div>
             {walletData.transactions.length === 0 ? <p className="py-4 text-sm text-muted-foreground">Your transactions will appear here.</p> : <div className="divide-y divide-border">{walletData.transactions.slice(0, 3).map((item) => <div key={item.id} className="flex items-center gap-3 py-3"><span className={`grid size-9 shrink-0 place-items-center rounded-full ${item.amount < 0 ? "bg-destructive/15 text-destructive" : "bg-primary/10 text-primary"}`}>{item.amount < 0 ? <ArrowUpRight className="size-4"/> : <ArrowDownLeft className="size-4"/>}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.description}</p><p className="mt-1 text-[11px] text-muted-foreground">{formatTime(item.created_at)}</p></div><div className="shrink-0 text-right text-sm font-bold">{item.amount !== 0 && <p className={item.amount < 0 ? "text-destructive" : "text-primary"}>{item.amount < 0 ? "−" : "+"}₹{money.format(Math.abs(item.amount))}</p>}{item.coins !== 0 && <p className="text-primary">{item.coins > 0 ? "+" : ""}{item.coins.toLocaleString("en-IN")} coins</p>}<p className={`text-[10px] ${item.amount < 0 || item.coins < 0 ? "text-destructive" : "text-primary"}`}>{item.amount < 0 || item.coins < 0 ? "Debit" : "Credit"}</p></div></div>)}</div>}
           </section>
+          <SavingsGoals isVip={wallet.is_vip} balance={Number(wallet.balance)} version={goalVersion} onChange={async () => { await refresh(); setGoalVersion(v => v + 1); }}/>
         </>}
 
         {activeTab === "earn" && <EarnTab data={walletData} refresh={refresh} onRedeem={() => setRedeemOpen(true)}/>}
         {activeTab === "spin" && <SpinTab data={walletData} refresh={refresh} onVip={() => setVipOpen(true)}/>} 
+        {activeTab === "referral" && <section id="referral-page" className="pt-6"><ReferSection code={wallet.referral_code} referredBy={wallet.referred_by} onDone={refresh}/></section>}
+        {activeTab === "missions" && <MissionsTab data={walletData} setActiveTab={setActiveTab}/>}
         {activeTab === "history" && <Transactions data={walletData.transactions}/>}
         {activeTab === "account" && <AccountTab data={walletData} isAdmin={isAdmin} onVip={onVipClick} onSignOut={async () => { await supabase.auth.signOut(); setActiveTab("home"); }}/>}
       </div>
