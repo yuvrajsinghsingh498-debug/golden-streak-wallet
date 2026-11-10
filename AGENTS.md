@@ -18,3 +18,4 @@
 - Keep the rewarded-ad cooldown synchronized between the database function and Earn screen; skipped ads must not invoke reward crediting.
 - Keep Home in the document scroll flow with bottom-navigation clearance; recent activity reuses the authenticated wallet transaction read.
 - Generate launcher icons from the cropped transparent emblem and declare separate any/maskable entries for each resolution in the linked web manifest.
+- Keep wallet authentication, balances, and transactions on the existing protected backend; dashboard-only additions must not move wallet writes into the client.
