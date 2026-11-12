@@ -8,6 +8,13 @@
       "when": 1791019206753,
       "tag": "0000_ad_cooldown_fifteen_seconds",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794469647640,
+      "tag": "0001_configurable_upi_and_coin_withdrawals",
+      "breakpoints": true
     }
   ]
 }
