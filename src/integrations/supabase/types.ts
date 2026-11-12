@@ -104,18 +104,24 @@ export type Database = {
       payment_settings: {
         Row: {
           id: boolean
+          max_withdrawal_amount: number
+          min_withdrawal_amount: number
           payee_name: string
           updated_at: string
           upi_id: string
         }
         Insert: {
           id?: boolean
+          max_withdrawal_amount?: number
+          min_withdrawal_amount?: number
           payee_name?: string
           updated_at?: string
           upi_id: string
         }
         Update: {
           id?: boolean
+          max_withdrawal_amount?: number
+          min_withdrawal_amount?: number
           payee_name?: string
           updated_at?: string
           upi_id?: string

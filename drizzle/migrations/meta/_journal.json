@@ -15,6 +15,13 @@
       "when": 1794469647640,
       "tag": "0001_configurable_upi_and_coin_withdrawals",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794469857231,
+      "tag": "0002_configurable_withdrawal_limits",
+      "breakpoints": true
     }
   ]
 }
