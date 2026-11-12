@@ -101,6 +101,33 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_settings: {
+        Row: {
+          id: boolean
+          max_withdrawal_amount: number
+          min_withdrawal_amount: number
+          payee_name: string
+          updated_at: string
+          upi_id: string
+        }
+        Insert: {
+          id?: boolean
+          max_withdrawal_amount?: number
+          min_withdrawal_amount?: number
+          payee_name?: string
+          updated_at?: string
+          upi_id: string
+        }
+        Update: {
+          id?: boolean
+          max_withdrawal_amount?: number
+          min_withdrawal_amount?: number
+          payee_name?: string
+          updated_at?: string
+          upi_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           ads_watched_today: number
@@ -290,9 +317,12 @@ export type Database = {
       withdrawal_requests: {
         Row: {
           amount: number
+          coins_reserved: number
           created_at: string
           id: string
+          idempotency_key: string | null
           payout_utr: string | null
+          source_currency: string
           status: string
           updated_at: string
           upi_id: string
@@ -301,9 +331,12 @@ export type Database = {
         }
         Insert: {
           amount: number
+          coins_reserved?: number
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           payout_utr?: string | null
+          source_currency?: string
           status?: string
           updated_at?: string
           upi_id: string
@@ -312,9 +345,12 @@ export type Database = {
         }
         Update: {
           amount?: number
+          coins_reserved?: number
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           payout_utr?: string | null
+          source_currency?: string
           status?: string
           updated_at?: string
           upi_id?: string
@@ -380,6 +416,16 @@ export type Database = {
       }
       redeem_referral: {
         Args: { code_in: string; uid_in: string }
+        Returns: undefined
+      }
+      request_coin_withdrawal: {
+        Args: {
+          amount_in: number
+          coins_in: number
+          request_key_in: string
+          uid_in: string
+          upi_in: string
+        }
         Returns: undefined
       }
       request_deposit: {

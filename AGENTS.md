@@ -19,3 +19,4 @@
 - Keep Home in the document scroll flow with bottom-navigation clearance; recent activity reuses the authenticated wallet transaction read.
 - Generate launcher icons from the cropped transparent emblem and declare separate any/maskable entries for each resolution in the linked web manifest.
 - Keep wallet authentication, balances, and transactions on the existing protected backend; dashboard-only additions must not move wallet writes into the client.
+- Store receiving UPI details in a singleton payment-settings record with authenticated read-only access and exact-admin-only updates; reserve and refund withdrawal coins atomically in protected database functions.
