@@ -9,20 +9,21 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { breakGoal, convertCoins, createGoal, fundGoal, loadGoals, loadWeeklyReferrers, redeemReferral, requestDeposit, requestWithdrawal } from "@/lib/wallet.functions";
+import { withdrawalCoinsFor } from "@/lib/withdrawal-rules";
 
 const money = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const errMsg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
-const VPA = "smartsaver@upi";
 const dialogCls = "w-[calc(100%-2rem)] rounded-2xl border-border bg-card";
+type PaymentSettings = { upi_id: string; payee_name: string; min_withdrawal_amount: number; max_withdrawal_amount: number };
 
 /* ---------- UPI pay step (shared) ---------- */
-function UpiPayStep({ amount, purpose, onBack, onSubmitted }: { amount: number; purpose: "deposit" | "vip"; onBack: () => void; onSubmitted: () => Promise<void> }) {
+function UpiPayStep({ amount, purpose, settings, onBack, onSubmitted }: { amount: number; purpose: "deposit" | "vip"; settings: PaymentSettings; onBack: () => void; onSubmitted: () => Promise<void> }) {
   const submit = useServerFn(requestDeposit);
   const [utr, setUtr] = useState("");
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const validUtr = /^\d{12}$/.test(utr);
-  const upiLink = `upi://pay?pa=${VPA}&pn=${encodeURIComponent("Smart Saver")}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(purpose === "vip" ? "VIP Pass" : "Smart Money")}`;
+  const upiLink = `upi://pay?pa=${encodeURIComponent(settings.upi_id)}&pn=${encodeURIComponent(settings.payee_name)}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(purpose === "vip" ? "VIP Pass" : "Smart Money")}`;
   const go = async (e: FormEvent) => {
     e.preventDefault(); setTouched(true);
     if (!validUtr) return;
@@ -34,8 +35,8 @@ function UpiPayStep({ amount, purpose, onBack, onSubmitted }: { amount: number; 
     <p className="text-center text-sm">Pay <b className="text-primary">₹{money.format(amount)}</b> to the official UPI ID</p>
     <div className="mx-auto grid w-fit place-items-center rounded-xl bg-foreground p-3"><QRCodeSVG value={upiLink} size={176}/></div>
     <div className="flex items-center justify-between rounded-xl border border-dashed border-primary bg-background/40 p-3">
-      <div><p className="text-[11px] text-muted-foreground">Official UPI ID</p><p className="font-mono font-bold text-primary">{VPA}</p></div>
-      <Button type="button" size="sm" variant="walletOutline" onClick={async () => { await navigator.clipboard.writeText(VPA); toast.success("UPI ID copied"); }}><Copy/>Copy</Button>
+      <div><p className="text-[11px] text-muted-foreground">Official UPI ID · {settings.payee_name}</p><p className="font-mono font-bold text-primary">{settings.upi_id}</p></div>
+      <Button type="button" size="sm" variant="walletOutline" onClick={async () => { await navigator.clipboard.writeText(settings.upi_id); toast.success("UPI ID copied"); }}><Copy/>Copy</Button>
     </div>
     <div><label className="mb-1.5 block text-sm font-semibold" htmlFor={`utr-${purpose}`}>12-digit UTR / Reference number</label>
       <Input id={`utr-${purpose}`} inputMode="numeric" maxLength={12} placeholder="Enter UTR after paying" value={utr} onChange={(e) => setUtr(e.target.value.replace(/\D/g, ""))} className="h-11 font-mono tracking-widest"/>
@@ -46,7 +47,7 @@ function UpiPayStep({ amount, purpose, onBack, onSubmitted }: { amount: number; 
 }
 
 /* ---------- UPI deposit ---------- */
-export function DepositDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; onDone: () => Promise<void> }) {
+export function DepositDialog({ open, onOpenChange, onDone, paymentSettings }: { open: boolean; onOpenChange: (o: boolean) => void; onDone: () => Promise<void>; paymentSettings: PaymentSettings }) {
   const [amount, setAmount] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
   const amt = Number(amount);
@@ -58,7 +59,7 @@ export function DepositDialog({ open, onOpenChange, onDone }: { open: boolean; o
       <div className="relative"><span className="absolute left-3 top-2.5 font-bold text-primary">₹</span><Input autoFocus inputMode="decimal" placeholder="100" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11 pl-8"/></div>
       {validAmt && <p className="text-xs text-muted-foreground">You'll receive <b className="text-primary">₹{money.format(amt)}</b> Smart Money after verification.</p>}
       <Button type="submit" variant="wallet" size="wallet" className="w-full" disabled={!validAmt}>Continue to payment</Button>
-    </form> : <UpiPayStep amount={amt} purpose="deposit" onBack={() => setStep(1)} onSubmitted={async () => { setAmount(""); change(false); await onDone(); }}/>}
+    </form> : <UpiPayStep amount={amt} purpose="deposit" settings={paymentSettings} onBack={() => setStep(1)} onSubmitted={async () => { setAmount(""); change(false); await onDone(); }}/>
   </DialogContent></Dialog>;
 }
 
