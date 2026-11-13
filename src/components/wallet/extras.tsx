@@ -87,7 +87,7 @@ export function VipDialog({ open, onOpenChange, balance, onPayWallet, busy, onDo
         <p className="text-center text-xs text-muted-foreground">Wallet balance: ₹{money.format(balance)}{balance < 49 ? " · need ₹49" : ""}</p>
         <Button variant="walletOutline" size="wallet" className="w-full" onClick={() => setUpi(true)}>Pay via UPI</Button>
       </div>
-    </> : <UpiPayStep amount={49} purpose="vip" onBack={() => setUpi(false)} onSubmitted={async () => { change(false); await onDone(); }}/>}
+    </> : <UpiPayStep amount={49} purpose="vip" settings={paymentSettings} onBack={() => setUpi(false)} onSubmitted={async () => { change(false); await onDone(); }}/>
   </DialogContent></Dialog>;
 }
 
