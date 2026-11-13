@@ -71,7 +71,7 @@ const VIP_ROWS: [string, string, string][] = [
   ["Goal Break Penalty", "₹10 penalty", "₹0 — break unlimited goals, full refund all month"],
   ["Badge", "Standard profile", "Exclusive Gold Crown"],
 ];
-export function VipDialog({ open, onOpenChange, balance, onPayWallet, busy, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; balance: number; onPayWallet: () => void; busy: boolean; onDone: () => Promise<void> }) {
+export function VipDialog({ open, onOpenChange, balance, onPayWallet, busy, onDone, paymentSettings }: { open: boolean; onOpenChange: (o: boolean) => void; balance: number; onPayWallet: () => void; busy: boolean; onDone: () => Promise<void>; paymentSettings: PaymentSettings }) {
   const [upi, setUpi] = useState(false);
   const change = (o: boolean) => { if (!o) setUpi(false); onOpenChange(o); };
   return <Dialog open={open} onOpenChange={change}><DialogContent className={`${dialogCls} max-h-[90vh] overflow-y-auto border-primary`}>
