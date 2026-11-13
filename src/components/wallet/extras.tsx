@@ -9,20 +9,21 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { breakGoal, convertCoins, createGoal, fundGoal, loadGoals, loadWeeklyReferrers, redeemReferral, requestDeposit, requestWithdrawal } from "@/lib/wallet.functions";
+import { withdrawalCoinsFor } from "@/lib/withdrawal-rules";
 
 const money = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const errMsg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
-const VPA = "smartsaver@upi";
 const dialogCls = "w-[calc(100%-2rem)] rounded-2xl border-border bg-card";
+type PaymentSettings = { upi_id: string; payee_name: string; min_withdrawal_amount: number; max_withdrawal_amount: number };
 
 /* ---------- UPI pay step (shared) ---------- */
-function UpiPayStep({ amount, purpose, onBack, onSubmitted }: { amount: number; purpose: "deposit" | "vip"; onBack: () => void; onSubmitted: () => Promise<void> }) {
+function UpiPayStep({ amount, purpose, settings, onBack, onSubmitted }: { amount: number; purpose: "deposit" | "vip"; settings: PaymentSettings; onBack: () => void; onSubmitted: () => Promise<void> }) {
   const submit = useServerFn(requestDeposit);
   const [utr, setUtr] = useState("");
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const validUtr = /^\d{12}$/.test(utr);
-  const upiLink = `upi://pay?pa=${VPA}&pn=${encodeURIComponent("Smart Saver")}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(purpose === "vip" ? "VIP Pass" : "Smart Money")}`;
+  const upiLink = `upi://pay?pa=${encodeURIComponent(settings.upi_id)}&pn=${encodeURIComponent(settings.payee_name)}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(purpose === "vip" ? "VIP Pass" : "Smart Money")}`;
   const go = async (e: FormEvent) => {
     e.preventDefault(); setTouched(true);
     if (!validUtr) return;
@@ -34,8 +35,8 @@ function UpiPayStep({ amount, purpose, onBack, onSubmitted }: { amount: number; 
     <p className="text-center text-sm">Pay <b className="text-primary">₹{money.format(amount)}</b> to the official UPI ID</p>
     <div className="mx-auto grid w-fit place-items-center rounded-xl bg-foreground p-3"><QRCodeSVG value={upiLink} size={176}/></div>
     <div className="flex items-center justify-between rounded-xl border border-dashed border-primary bg-background/40 p-3">
-      <div><p className="text-[11px] text-muted-foreground">Official UPI ID</p><p className="font-mono font-bold text-primary">{VPA}</p></div>
-      <Button type="button" size="sm" variant="walletOutline" onClick={async () => { await navigator.clipboard.writeText(VPA); toast.success("UPI ID copied"); }}><Copy/>Copy</Button>
+      <div><p className="text-[11px] text-muted-foreground">Official UPI ID · {settings.payee_name}</p><p className="font-mono font-bold text-primary">{settings.upi_id}</p></div>
+      <Button type="button" size="sm" variant="walletOutline" onClick={async () => { await navigator.clipboard.writeText(settings.upi_id); toast.success("UPI ID copied"); }}><Copy/>Copy</Button>
     </div>
     <div><label className="mb-1.5 block text-sm font-semibold" htmlFor={`utr-${purpose}`}>12-digit UTR / Reference number</label>
       <Input id={`utr-${purpose}`} inputMode="numeric" maxLength={12} placeholder="Enter UTR after paying" value={utr} onChange={(e) => setUtr(e.target.value.replace(/\D/g, ""))} className="h-11 font-mono tracking-widest"/>
@@ -46,7 +47,7 @@ function UpiPayStep({ amount, purpose, onBack, onSubmitted }: { amount: number; 
 }
 
 /* ---------- UPI deposit ---------- */
-export function DepositDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; onDone: () => Promise<void> }) {
+export function DepositDialog({ open, onOpenChange, onDone, paymentSettings }: { open: boolean; onOpenChange: (o: boolean) => void; onDone: () => Promise<void>; paymentSettings: PaymentSettings }) {
   const [amount, setAmount] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
   const amt = Number(amount);
@@ -58,7 +59,7 @@ export function DepositDialog({ open, onOpenChange, onDone }: { open: boolean; o
       <div className="relative"><span className="absolute left-3 top-2.5 font-bold text-primary">₹</span><Input autoFocus inputMode="decimal" placeholder="100" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11 pl-8"/></div>
       {validAmt && <p className="text-xs text-muted-foreground">You'll receive <b className="text-primary">₹{money.format(amt)}</b> Smart Money after verification.</p>}
       <Button type="submit" variant="wallet" size="wallet" className="w-full" disabled={!validAmt}>Continue to payment</Button>
-    </form> : <UpiPayStep amount={amt} purpose="deposit" onBack={() => setStep(1)} onSubmitted={async () => { setAmount(""); change(false); await onDone(); }}/>}
+    </form> : <UpiPayStep amount={amt} purpose="deposit" settings={paymentSettings} onBack={() => setStep(1)} onSubmitted={async () => { setAmount(""); change(false); await onDone(); }}/>
   </DialogContent></Dialog>;
 }
 
@@ -70,7 +71,7 @@ const VIP_ROWS: [string, string, string][] = [
   ["Goal Break Penalty", "₹10 penalty", "₹0 — break unlimited goals, full refund all month"],
   ["Badge", "Standard profile", "Exclusive Gold Crown"],
 ];
-export function VipDialog({ open, onOpenChange, balance, onPayWallet, busy, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; balance: number; onPayWallet: () => void; busy: boolean; onDone: () => Promise<void> }) {
+export function VipDialog({ open, onOpenChange, balance, onPayWallet, busy, onDone, paymentSettings }: { open: boolean; onOpenChange: (o: boolean) => void; balance: number; onPayWallet: () => void; busy: boolean; onDone: () => Promise<void>; paymentSettings: PaymentSettings }) {
   const [upi, setUpi] = useState(false);
   const change = (o: boolean) => { if (!o) setUpi(false); onOpenChange(o); };
   return <Dialog open={open} onOpenChange={change}><DialogContent className={`${dialogCls} max-h-[90vh] overflow-y-auto border-primary`}>
@@ -86,12 +87,12 @@ export function VipDialog({ open, onOpenChange, balance, onPayWallet, busy, onDo
         <p className="text-center text-xs text-muted-foreground">Wallet balance: ₹{money.format(balance)}{balance < 49 ? " · need ₹49" : ""}</p>
         <Button variant="walletOutline" size="wallet" className="w-full" onClick={() => setUpi(true)}>Pay via UPI</Button>
       </div>
-    </> : <UpiPayStep amount={49} purpose="vip" onBack={() => setUpi(false)} onSubmitted={async () => { change(false); await onDone(); }}/>}
+    </> : <UpiPayStep amount={49} purpose="vip" settings={paymentSettings} onBack={() => setUpi(false)} onSubmitted={async () => { change(false); await onDone(); }}/>
   </DialogContent></Dialog>;
 }
 
 /* ---------- Withdraw ---------- */
-export function WithdrawDialog({ open, onOpenChange, balance, defaultUpi, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; balance: number; defaultUpi: string | null; onDone: () => Promise<void> }) {
+export function WithdrawDialog({ open, onOpenChange, coins, defaultUpi, minimum, maximum, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; coins: number; defaultUpi: string | null; minimum: number; maximum: number; onDone: () => Promise<void> }) {
   const submit = useServerFn(requestWithdrawal);
   const [amount, setAmount] = useState("");
   const [upi, setUpi] = useState(defaultUpi ?? "");
@@ -99,19 +100,21 @@ export function WithdrawDialog({ open, onOpenChange, balance, defaultUpi, onDone
   const amt = Number(amount);
   const go = async (e: FormEvent) => {
     e.preventDefault();
-    if (!Number.isFinite(amt) || amt < 10) return toast.error("Minimum withdrawal is ₹10");
-    if (amt > balance) return toast.error("Insufficient Smart Money");
+    if (!Number.isFinite(amt) || amt < minimum || amt > maximum || !/^\d+(\.\d{1,2})?$/.test(amount)) return toast.error(`Enter an amount from ₹${money.format(minimum)} to ₹${money.format(maximum)}`);
+    const requiredCoins = withdrawalCoinsFor(amt);
+    if (requiredCoins > coins) return toast.error("Insufficient Smart Coins");
     if (!/^[A-Za-z0-9._-]{2,}@[A-Za-z]{2,}$/.test(upi.trim())) return toast.error("Enter a valid UPI ID");
     setBusy(true);
-    try { await submit({ data: { amount: amt, upi: upi.trim() } }); toast.success("Withdrawal requested", { description: "Amount is held until the payout is sent." }); setAmount(""); onOpenChange(false); await onDone(); }
+    try { await submit({ data: { amount: amt, upi: upi.trim(), currency: "smart_coins", requestKey: crypto.randomUUID() } }); toast.success("Withdrawal requested", { description: `${requiredCoins.toLocaleString("en-IN")} Smart Coins are reserved until payout or refund.` }); setAmount(""); onOpenChange(false); await onDone(); }
     catch (err) { toast.error(errMsg(err, "Could not request withdrawal")); } finally { setBusy(false); }
   };
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className={dialogCls}>
-    <DialogHeader><DialogTitle>Withdraw to UPI</DialogTitle><DialogDescription>Available: ₹{money.format(balance)} · Minimum ₹10</DialogDescription></DialogHeader>
+    <DialogHeader><DialogTitle>Withdraw to UPI</DialogTitle><DialogDescription>Available: {coins.toLocaleString("en-IN")} Smart Coins · 100 coins = ₹1 · Minimum ₹{money.format(minimum)}</DialogDescription></DialogHeader>
     <form onSubmit={go} className="space-y-4">
       <div className="relative"><span className="absolute left-3 top-2.5 font-bold text-primary">₹</span><Input inputMode="decimal" placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11 pl-8"/></div>
+      {Number.isFinite(amt) && amt > 0 && <p className="text-xs text-muted-foreground">You will reserve <b className="text-primary">{withdrawalCoinsFor(amt).toLocaleString("en-IN")} Smart Coins</b> for ₹{money.format(amt)}.</p>}
       <Input placeholder="yourname@upi" value={upi} onChange={(e) => setUpi(e.target.value)} maxLength={60} className="h-11"/>
-      <Button type="submit" variant="wallet" size="wallet" className="w-full" disabled={busy || balance < 10}>{busy && <LoaderCircle className="animate-spin"/>}{balance < 10 ? "Need at least ₹10" : "Request Withdrawal"}</Button>
+      <Button type="submit" variant="wallet" size="wallet" className="w-full" disabled={busy || coins < withdrawalCoinsFor(minimum)}>{busy && <LoaderCircle className="animate-spin"/>}{coins < withdrawalCoinsFor(minimum) ? "Not enough Smart Coins" : "Request Withdrawal"}</Button>
     </form>
   </DialogContent></Dialog>;
 }

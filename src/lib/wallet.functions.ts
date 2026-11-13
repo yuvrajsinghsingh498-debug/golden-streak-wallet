@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { withdrawalCoinsFor } from "@/lib/withdrawal-rules";
 
 const amountSchema = z.object({
   amount: z.number().positive().max(1_000_000).multipleOf(0.01),
@@ -23,14 +24,16 @@ export const loadWallet = createServerFn({ method: "GET" })
     if (walletError) throw new Error(walletError.message);
     const pendingMilestone = walletRows as number | null;
 
-    const [{ data: row, error: rowError }, { data: transactions, error: txError }, { data: notifications, error: nError }] = await Promise.all([
+    const [{ data: row, error: rowError }, { data: transactions, error: txError }, { data: notifications, error: nError }, { data: paymentSettings, error: settingsError }] = await Promise.all([
       context.supabase.from("profiles").select("*").eq("id", context.userId).single(),
       context.supabase.from("wallet_transactions").select("id, kind, amount, coins, description, created_at").order("created_at", { ascending: false }).limit(100),
       context.supabase.from("notifications").select("id, title, body, is_read, created_at").order("created_at", { ascending: false }).limit(50),
+      context.supabase.from("payment_settings").select("upi_id, payee_name, min_withdrawal_amount, max_withdrawal_amount").eq("id", true).single(),
     ]);
     if (rowError) throw new Error(rowError.message);
     if (txError) throw new Error(txError.message);
     if (nError) throw new Error(nError.message);
+    if (settingsError) throw new Error(settingsError.message);
 
     const freeLimit = 1;
     const freeLeft = Math.max(0, freeLimit - row.spins_used);
@@ -47,6 +50,7 @@ export const loadWallet = createServerFn({ method: "GET" })
       user: { id: context.userId, email, name: row.full_name ?? (context.claims as { name?: string }).name ?? "" },
       transactions: transactions ?? [],
       notifications: notifications ?? [],
+      paymentSettings,
     };
   });
 
@@ -175,8 +179,16 @@ export const requestDeposit = createServerFn({ method: "POST" })
 
 export const requestWithdrawal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ amount: z.number().min(10).max(100000), upi: z.string().trim().regex(/^[A-Za-z0-9._-]{2,}@[A-Za-z]{2,}$/) }).parse(i))
-  .handler(async ({ data, context }) => { await rpc("request_withdrawal", { uid_in: context.userId, amount_in: data.amount, upi_in: data.upi }); return { ok: true }; });
+  .inputValidator((i) => z.object({ amount: z.number().positive().max(100000).multipleOf(0.01), upi: z.string().trim().regex(/^[A-Za-z0-9._-]{2,}@[A-Za-z]{2,}$/), currency: z.enum(["smart_coins", "smart_money"]).default("smart_coins"), requestKey: z.string().uuid().optional() }).parse(i))
+  .handler(async ({ data, context }) => {
+    if (data.currency === "smart_coins") {
+      const coins = withdrawalCoinsFor(data.amount);
+      await rpc("request_coin_withdrawal", { uid_in: context.userId, amount_in: data.amount, coins_in: coins, upi_in: data.upi, request_key_in: data.requestKey ?? crypto.randomUUID() });
+    } else {
+      await rpc("request_withdrawal", { uid_in: context.userId, amount_in: data.amount, upi_in: data.upi });
+    }
+    return { ok: true };
+  });
 
 export const convertCoins = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

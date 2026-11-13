@@ -66,24 +66,25 @@ function SmartWalletPage() {
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [rewardMilestone, setRewardMilestone] = useState<100 | 200 | 500 | null>(null);
+  const walletRefreshInFlight = useRef<Promise<void> | null>(null);
 
-  const refresh = async () => {
-    const result = await getWallet();
-    setWalletData(result);
-    if (result.transactions.some((t) => t.description === "Welcome bonus") && typeof window !== "undefined" && !window.sessionStorage.getItem(`welcome-${result.user.id}`)) {
-      window.sessionStorage.setItem(`welcome-${result.user.id}`, "shown");
-      setWelcomeOpen(true);
-    }
-    if (typeof window !== "undefined") {
-      const streakKey = `streak-toast-${result.user.id}-${new Date().toISOString().slice(0, 10)}`;
-      if (!window.localStorage.getItem(streakKey)) {
-        window.localStorage.setItem(streakKey, "1");
-        const days = result.wallet.current_streak;
-        toast.success(days > 1 ? `🔥 ${days}-day streak!` : "Daily streak started", { description: days > 1 ? "You checked in again today — keep it going." : "Come back tomorrow to grow your streak." });
+  const refresh = () => {
+    if (walletRefreshInFlight.current) return walletRefreshInFlight.current;
+    const request = (async () => {
+      const result = await getWallet();
+      setWalletData(result);
+      if (result.transactions.some((t) => t.description === "Welcome bonus") && typeof window !== "undefined" && !window.sessionStorage.getItem(`welcome-${result.user.id}`)) {
+        window.sessionStorage.setItem(`welcome-${result.user.id}`, "shown");
+        setWelcomeOpen(true);
       }
-    }
-    const pending = result.wallet.pending_milestone;
-    if (pending === 100 || pending === 200 || pending === 500) setRewardMilestone(pending);
+      const pending = result.wallet.pending_milestone;
+      if (pending === 100 || pending === 200 || pending === 500) setRewardMilestone(pending);
+    })();
+    walletRefreshInFlight.current = request;
+    void request.finally(() => {
+      if (walletRefreshInFlight.current === request) walletRefreshInFlight.current = null;
+    }).catch(() => undefined);
+    return request;
   };
 
   useEffect(() => {
@@ -115,18 +116,15 @@ function SmartWalletPage() {
   useEffect(() => {
     if (!liveUserId) return;
     let timer: number | undefined;
-    let lastSyncToast = 0;
-    const onChange = (notify: boolean) => {
+    const onChange = () => {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
-        refresh().then(() => {
-          if (notify && Date.now() - lastSyncToast > 30000) { lastSyncToast = Date.now(); toast.info("Wallet synced", { description: "Your balance was updated." }); }
-        }).catch(() => undefined);
+        refresh().catch(() => undefined);
       }, 700);
     };
     const channel = supabase.channel(`wallet-live-${liveUserId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `id=eq.${liveUserId}` }, () => onChange(true))
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${liveUserId}` }, () => onChange(false))
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `id=eq.${liveUserId}` }, onChange)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${liveUserId}` }, onChange)
       .subscribe();
     return () => { window.clearTimeout(timer); supabase.removeChannel(channel); };
   }, [liveUserId]);
@@ -238,10 +236,10 @@ function SmartWalletPage() {
 
       <Dialog open={moneyInfoOpen} onOpenChange={setMoneyInfoOpen}><DialogContent className="w-[calc(100%-2rem)] rounded-lg border-border bg-card"><DialogHeader><DialogTitle>About Smart Money</DialogTitle><DialogDescription>1 Smart Money = ₹1. Withdrawable balance for goals and UPI cashout.</DialogDescription></DialogHeader><Button variant="wallet" onClick={() => setMoneyInfoOpen(false)}>Got it</Button></DialogContent></Dialog>
       <Dialog open={streakDetailsOpen} onOpenChange={setStreakDetailsOpen}><DialogContent className="w-[calc(100%-2rem)] rounded-lg border-border bg-card"><DialogHeader><DialogTitle className="flex items-center gap-2"><Flame className="size-5 text-primary"/>Your daily streak</DialogTitle><DialogDescription>{wallet.current_streak} consecutive days. Visit each day to keep your streak active and reach the next coin milestone.</DialogDescription></DialogHeader><div className="space-y-2">{([100, 200, 500] as const).map(day => <div key={day} className={`flex items-center justify-between rounded-md border p-3 ${wallet.current_streak >= day ? "border-primary/50 bg-primary/10" : "border-border bg-muted/30"}`}><span className="font-semibold">{day}-day milestone</span><span className="text-sm font-bold text-primary">+{rewards[day].toLocaleString("en-IN")} coins</span></div>)}</div><Button variant="wallet" onClick={() => setStreakDetailsOpen(false)}>Done</Button></DialogContent></Dialog>
-      <DepositDialog open={addOpen} onOpenChange={setAddOpen} onDone={async () => { await refresh(); setGoalVersion(v => v + 1); }}/>
+      <DepositDialog open={addOpen} onOpenChange={setAddOpen} paymentSettings={walletData.paymentSettings} onDone={async () => { await refresh(); setGoalVersion(v => v + 1); }}/>
        <RedeemDialog open={redeemOpen} onOpenChange={setRedeemOpen} coins={wallet.coins} onDone={refresh}/>
-      <WithdrawDialog open={withdrawOpen} onOpenChange={setWithdrawOpen} balance={Number(wallet.balance)} defaultUpi={wallet.default_upi} onDone={refresh}/>
-      <VipDialog open={vipOpen} onOpenChange={setVipOpen} balance={Number(wallet.balance)} busy={saving} onPayWallet={handleVip} onDone={refresh}/>
+      <WithdrawDialog open={withdrawOpen} onOpenChange={setWithdrawOpen} coins={Number(wallet.coins)} defaultUpi={wallet.default_upi} minimum={Number(walletData.paymentSettings.min_withdrawal_amount)} maximum={Number(walletData.paymentSettings.max_withdrawal_amount)} onDone={refresh}/>
+      <VipDialog open={vipOpen} onOpenChange={setVipOpen} balance={Number(wallet.balance)} busy={saving} paymentSettings={walletData.paymentSettings} onPayWallet={handleVip} onDone={refresh}/>
 
       <Dialog open={rewardMilestone !== null} onOpenChange={() => undefined}><DialogContent className="w-[calc(100%-2rem)] rounded-2xl border-primary bg-card text-center"><Trophy className="mx-auto size-14 text-primary"/><DialogHeader><DialogTitle>Streak milestone reached!</DialogTitle><DialogDescription>You completed {rewardMilestone} active days. Claim your {rewardMilestone ? rewards[rewardMilestone].toLocaleString("en-IN") : 0} coin reward.</DialogDescription></DialogHeader><Button variant="wallet" size="wallet" onClick={handleClaim} disabled={saving}>{saving && <LoaderCircle className="animate-spin"/>}Claim Reward</Button></DialogContent></Dialog>
     </main>
