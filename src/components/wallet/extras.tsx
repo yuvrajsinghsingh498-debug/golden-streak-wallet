@@ -92,7 +92,7 @@ export function VipDialog({ open, onOpenChange, balance, onPayWallet, busy, onDo
 }
 
 /* ---------- Withdraw ---------- */
-export function WithdrawDialog({ open, onOpenChange, balance, defaultUpi, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; balance: number; defaultUpi: string | null; onDone: () => Promise<void> }) {
+export function WithdrawDialog({ open, onOpenChange, coins, defaultUpi, minimum, maximum, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; coins: number; defaultUpi: string | null; minimum: number; maximum: number; onDone: () => Promise<void> }) {
   const submit = useServerFn(requestWithdrawal);
   const [amount, setAmount] = useState("");
   const [upi, setUpi] = useState(defaultUpi ?? "");
@@ -100,19 +100,21 @@ export function WithdrawDialog({ open, onOpenChange, balance, defaultUpi, onDone
   const amt = Number(amount);
   const go = async (e: FormEvent) => {
     e.preventDefault();
-    if (!Number.isFinite(amt) || amt < 10) return toast.error("Minimum withdrawal is ₹10");
-    if (amt > balance) return toast.error("Insufficient Smart Money");
+    if (!Number.isFinite(amt) || amt < minimum || amt > maximum || !/^\d+(\.\d{1,2})?$/.test(amount)) return toast.error(`Enter an amount from ₹${money.format(minimum)} to ₹${money.format(maximum)}`);
+    const requiredCoins = withdrawalCoinsFor(amt);
+    if (requiredCoins > coins) return toast.error("Insufficient Smart Coins");
     if (!/^[A-Za-z0-9._-]{2,}@[A-Za-z]{2,}$/.test(upi.trim())) return toast.error("Enter a valid UPI ID");
     setBusy(true);
-    try { await submit({ data: { amount: amt, upi: upi.trim() } }); toast.success("Withdrawal requested", { description: "Amount is held until the payout is sent." }); setAmount(""); onOpenChange(false); await onDone(); }
+    try { await submit({ data: { amount: amt, upi: upi.trim(), currency: "smart_coins", requestKey: crypto.randomUUID() } }); toast.success("Withdrawal requested", { description: `${requiredCoins.toLocaleString("en-IN")} Smart Coins are reserved until payout or refund.` }); setAmount(""); onOpenChange(false); await onDone(); }
     catch (err) { toast.error(errMsg(err, "Could not request withdrawal")); } finally { setBusy(false); }
   };
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className={dialogCls}>
-    <DialogHeader><DialogTitle>Withdraw to UPI</DialogTitle><DialogDescription>Available: ₹{money.format(balance)} · Minimum ₹10</DialogDescription></DialogHeader>
+    <DialogHeader><DialogTitle>Withdraw to UPI</DialogTitle><DialogDescription>Available: {coins.toLocaleString("en-IN")} Smart Coins · 100 coins = ₹1 · Minimum ₹{money.format(minimum)}</DialogDescription></DialogHeader>
     <form onSubmit={go} className="space-y-4">
       <div className="relative"><span className="absolute left-3 top-2.5 font-bold text-primary">₹</span><Input inputMode="decimal" placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11 pl-8"/></div>
+      {Number.isFinite(amt) && amt > 0 && <p className="text-xs text-muted-foreground">You will reserve <b className="text-primary">{withdrawalCoinsFor(amt).toLocaleString("en-IN")} Smart Coins</b> for ₹{money.format(amt)}.</p>}
       <Input placeholder="yourname@upi" value={upi} onChange={(e) => setUpi(e.target.value)} maxLength={60} className="h-11"/>
-      <Button type="submit" variant="wallet" size="wallet" className="w-full" disabled={busy || balance < 10}>{busy && <LoaderCircle className="animate-spin"/>}{balance < 10 ? "Need at least ₹10" : "Request Withdrawal"}</Button>
+      <Button type="submit" variant="wallet" size="wallet" className="w-full" disabled={busy || coins < withdrawalCoinsFor(minimum)}>{busy && <LoaderCircle className="animate-spin"/>}{coins < withdrawalCoinsFor(minimum) ? "Not enough Smart Coins" : "Request Withdrawal"}</Button>
     </form>
   </DialogContent></Dialog>;
 }
